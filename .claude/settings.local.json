@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(streamlit run *)",
+      "Bash(pkill -f \"streamlit run\")",
+      "Bash(curl -s http://localhost:8501/_stcore/health)",
+      "Bash(pkill -f \"streamlit run dashboard.py\")",
+      "Bash(python3 *)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(grep -E \"\\\\.\\(py|md\\)$\")"
+    ]
+  }
+}

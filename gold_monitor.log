@@ -1,0 +1,8 @@
+🟡 GOLD MONITOR (24/7) STARTED
+
+⏰ 16:08:03 - Gold $4462.50 | HOLD | RSI: 65
+/Users/anubhavarya/star/star-dashboard/gold_monitor.py:101: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "last_updated": datetime.utcnow().isoformat()
+⏰ 16:09:04 - Gold $4463.00 | HOLD | RSI: 65
+/Users/anubhavarya/star/star-dashboard/gold_monitor.py:101: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  "last_updated": datetime.utcnow().isoformat()
