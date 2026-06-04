@@ -88,20 +88,21 @@ def publish_gold_data():
 
         # Publish to Supabase
         try:
-            sb.table("agent_states").upsert({
+            update_data = {
                 "agent_name": "GoldMonitor",
                 "status": "active",
-                "last_signal": f"${price:.2f} | {signal}",
-                "state": {
-                    "price": price,
-                    "rsi": rsi,
-                    "macd_hist": macd_hist,
-                    "signal": signal
-                },
+                "last_signal": f"${price:.2f} | {signal} | RSI: {rsi:.0f}",
                 "last_updated": datetime.utcnow().isoformat()
-            }).execute()
-        except:
-            pass  # Silently fail if table doesn't exist
+            }
+
+            response = sb.table("agent_states").upsert(update_data).execute()
+            print(f"  ✅ Saved to Supabase", flush=True)
+
+        except Exception as e:
+            # Print error for debugging
+            print(f"  ❌ SUPABASE ERROR: {str(e)}", flush=True)
+            import traceback
+            traceback.print_exc()
 
         return True
 

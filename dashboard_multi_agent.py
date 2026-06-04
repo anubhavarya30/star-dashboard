@@ -32,12 +32,12 @@ st.sidebar.title("⭐ Star Trading System")
 page = st.sidebar.radio(
     "Navigation",
     options=[
-        "🎯 Star's Decisions",
-        "📊 Agent Reports",
-        "🤖 Agent Status",
         "💼 Positions & Trades",
         "🟡 Gold Monitor 24/7",
-        "📈 Performance"
+        "🤖 Agent Status",
+        "📈 Performance",
+        "🎯 Star's Decisions",
+        "📊 Agent Reports"
     ],
     label_visibility="collapsed"
 )
@@ -49,7 +49,14 @@ def fetch_table(table_name, filters=None):
         if filters:
             for key, value in filters.items():
                 q = q.eq(key, value)
-        return q.order("created_at", desc=True).limit(100).execute().data
+
+        # Try to order by last_updated if it exists, otherwise don't order
+        try:
+            return q.order("last_updated", desc=True).limit(100).execute().data
+        except:
+            # If order fails, just return without ordering
+            return q.limit(100).execute().data
+
     except Exception as e:
         error_msg = str(e)
         # Silently fail for missing tables - don't show error
@@ -199,29 +206,74 @@ elif page == "💼 Positions & Trades":
 
     with col1:
         st.subheader("Open Positions")
-        positions = fetch_table("positions", {"status": "open"})
-        if positions:
-            df = pd.DataFrame(positions)
-            if 'current_price' in df.columns and 'entry_price' in df.columns:
-                df['pnl_pct'] = ((df['current_price'] - df['entry_price']) / df['entry_price'] * 100).round(2)
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("No open positions.")
+        try:
+            positions = fetch_table("positions")
+            if positions:
+                df = pd.DataFrame(positions)
+                # Calculate P&L
+                if 'current_price' in df.columns and 'entry_price' in df.columns:
+                    df['pnl'] = df['current_price'] - df['entry_price']
+                    df['pnl_pct'] = ((df['current_price'] - df['entry_price']) / df['entry_price'] * 100).round(2)
+
+                # Show key columns
+                cols_to_show = ['symbol', 'direction', 'entry_price', 'current_price', 'pnl_pct', 'strategy']
+                cols_available = [c for c in cols_to_show if c in df.columns]
+
+                st.dataframe(df[cols_available].head(10), use_container_width=True)
+
+                # Summary metrics
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    st.metric("Total Positions", len(df))
+                with col_b:
+                    if 'pnl' in df.columns:
+                        total_pnl = df['pnl'].sum()
+                        st.metric("Total P&L", f"${total_pnl:.2f}")
+                with col_c:
+                    if 'pnl_pct' in df.columns:
+                        avg_pnl = df['pnl_pct'].mean()
+                        st.metric("Avg P&L %", f"{avg_pnl:.2f}%")
+            else:
+                st.info("No positions found")
+        except Exception as e:
+            st.warning(f"Could not load positions: {str(e)[:100]}")
 
     with col2:
         st.subheader("Completed Trades")
-        trades = fetch_table("trades")
-        if trades:
-            df = pd.DataFrame(trades)
-            st.dataframe(df, use_container_width=True)
+        try:
+            trades = fetch_table("trades")
+            if trades:
+                df = pd.DataFrame(trades)
 
-            # P&L chart
-            if 'pnl_pct' in df.columns:
-                fig = px.line(df.sort_values('created_at'), x='created_at', y='pnl_pct',
-                            title="Trade P&L Over Time", markers=True)
-                st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No completed trades.")
+                # Show key columns
+                cols_to_show = ['symbol', 'direction', 'entry_price', 'exit_price', 'pnl', 'pnl_pct', 'strategy']
+                cols_available = [c for c in cols_to_show if c in df.columns]
+
+                st.dataframe(df[cols_available].head(10), use_container_width=True)
+
+                # P&L chart
+                if 'pnl_pct' in df.columns and len(df) > 0:
+                    fig = px.bar(df, x='symbol', y='pnl_pct', title="P&L by Symbol", color='pnl_pct',
+                                color_continuous_scale='RdYlGn')
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Summary
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a:
+                        st.metric("Total Trades", len(df))
+                    with col_b:
+                        if 'pnl' in df.columns:
+                            total_pnl = df['pnl'].sum()
+                            st.metric("Total P&L", f"${total_pnl:.2f}")
+                    with col_c:
+                        if 'pnl_pct' in df.columns:
+                            win_count = len(df[df['pnl_pct'] > 0])
+                            win_rate = (win_count / len(df) * 100) if len(df) > 0 else 0
+                            st.metric("Win Rate", f"{win_rate:.0f}%")
+            else:
+                st.info("No trades found")
+        except Exception as e:
+            st.warning(f"Could not load trades: {str(e)[:100]}")
 
 # ============================================================
 # PAGE 5: GOLD MONITOR (24/7)
@@ -229,30 +281,58 @@ elif page == "💼 Positions & Trades":
 elif page == "🟡 Gold Monitor 24/7":
     st.header("🟡 Gold Monitor — XAUUSD (24/7)")
 
-    gold_data = fetch_table("gold_monitor")
+    try:
+        # Get gold monitor data from agent_states
+        agents = fetch_table("agent_states")
+        gold_agent = next((a for a in agents if a.get('agent_name') == 'GoldMonitor'), None)
 
-    if gold_data:
-        latest = gold_data[0]
+        if gold_agent and gold_agent.get('status') == 'active':
+            # Parse last_signal for live data
+            last_signal = gold_agent.get('last_signal', '')
+            last_updated = gold_agent.get('last_updated', '')
 
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            st.metric("Price", f"${latest.get('price', '—')}")
-        with col2:
-            st.metric("RSI(14)", f"{latest.get('rsi', '—'):.1f}")
-        with col3:
-            st.metric("MACD", f"{latest.get('macd', '—'):.4f}")
-        with col4:
-            st.metric("Signal", latest.get('signal', '—'))
-        with col5:
-            st.metric("Timestamp", latest.get('created_at', '')[:10])
+            # Extract values from last_signal (format: "$4462.40 | HOLD | RSI: 65")
+            parts = last_signal.split('|')
 
-        # Gold chart
-        df = pd.DataFrame(gold_data[-100:])
-        fig = px.line(df, x='created_at', y='price', title="Gold Price (24/7)",
-                     markers=True, template="plotly_dark")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Waiting for gold_monitor.py to publish data...")
+            price_str = parts[0].strip().replace('$', '') if len(parts) > 0 else 'N/A'
+            signal_str = parts[1].strip() if len(parts) > 1 else 'HOLD'
+            rsi_str = parts[2].strip().replace('RSI:', '').strip() if len(parts) > 2 else 'N/A'
+
+            try:
+                price = float(price_str)
+                rsi = float(rsi_str)
+            except:
+                price = price_str
+                rsi = rsi_str
+
+            col1, col2, col3, col4, col5 = st.columns(5)
+            with col1:
+                st.metric("💰 Price", f"${price:.2f}" if isinstance(price, float) else price)
+            with col2:
+                st.metric("📊 RSI(14)", f"{rsi:.0f}" if isinstance(rsi, float) else rsi)
+            with col3:
+                st.metric("📈 MACD", "Computing...")
+            with col4:
+                signal_emoji = "🟢" if signal_str == "BUY" else "🔴" if signal_str == "SELL" else "🟡"
+                st.metric(f"{signal_emoji} Signal", signal_str)
+            with col5:
+                st.metric("🕐 Updated", last_updated[:10] if last_updated else "—")
+
+            st.success(f"✅ Gold Monitor ACTIVE | Last: {last_signal}")
+            st.caption("Monitoring XAUUSD 24/7 | Updates every 60 seconds")
+
+            # Show refresh info
+            if st.button("🔄 Refresh Data"):
+                st.rerun()
+
+        else:
+            st.warning("⏳ Waiting for gold_monitor.py to publish data...")
+            st.error("Start gold monitor with:")
+            st.code("python3 gold_monitor.py")
+
+    except Exception as e:
+        st.error(f"Gold Monitor Error: {str(e)[:100]}")
+        st.info("Make sure gold_monitor.py is running: `ps aux | grep gold_monitor`")
 
 # ============================================================
 # PAGE 6: PERFORMANCE
@@ -260,35 +340,52 @@ elif page == "🟡 Gold Monitor 24/7":
 elif page == "📈 Performance":
     st.header("📈 System Performance")
 
-    # Overall stats
-    col1, col2, col3, col4 = st.columns(4)
+    try:
+        # Get trades data
+        trades = fetch_table("trades")
+        positions = fetch_table("positions")
 
-    trades = fetch_table("trades")
-    if trades:
-        df = pd.DataFrame(trades)
+        col1, col2, col3, col4 = st.columns(4)
 
-        with col1:
-            st.metric("Total Trades", len(df))
-        with col2:
-            wins = len(df[df['pnl'] > 0]) if 'pnl' in df.columns else 0
-            st.metric("Winning Trades", wins)
-        with col3:
+        if trades:
+            df = pd.DataFrame(trades)
+
+            wins = len(df[df.get('pnl', pd.Series([0])) > 0]) if 'pnl' in df.columns else 0
             total_pnl = df['pnl'].sum() if 'pnl' in df.columns else 0
-            st.metric("Total P&L", f"${total_pnl:.2f}")
-        with col4:
             win_rate = (wins / len(df) * 100) if len(df) > 0 else 0
-            st.metric("Win Rate", f"{win_rate:.0f}%")
 
-        # Strategy performance
-        if 'strategy' in df.columns:
-            st.subheader("Strategy Performance")
-            strategy_stats = df.groupby('strategy').agg({
-                'pnl': 'sum',
-                'symbol': 'count'
-            }).rename(columns={'symbol': 'trades'})
-            st.dataframe(strategy_stats, use_container_width=True)
-    else:
-        st.info("No trades yet.")
+            with col1:
+                st.metric("Total Trades", len(df))
+            with col2:
+                st.metric("Winning Trades", wins)
+            with col3:
+                st.metric("Total P&L", f"${total_pnl:.2f}")
+            with col4:
+                st.metric("Win Rate", f"{win_rate:.0f}%")
+
+            # Strategy performance
+            if 'strategy' in df.columns:
+                st.subheader("Strategy Performance")
+                strategy_stats = df.groupby('strategy').agg({
+                    'pnl': ['sum', 'count', 'mean']
+                }).round(2)
+                st.dataframe(strategy_stats, use_container_width=True)
+
+            # P&L by symbol
+            if 'symbol' in df.columns and 'pnl' in df.columns:
+                st.subheader("P&L by Symbol")
+                symbol_stats = df.groupby('symbol')['pnl'].agg(['sum', 'count', 'mean']).round(2)
+                fig = px.bar(symbol_stats.reset_index(), x='symbol', y='sum', title="Total P&L by Symbol",
+                            color='sum', color_continuous_scale='RdYlGn')
+                st.plotly_chart(fig, use_container_width=True)
+
+        if positions:
+            st.subheader("Open Positions Summary")
+            df_pos = pd.DataFrame(positions)
+            st.metric("Open Positions", len(df_pos))
+
+    except Exception as e:
+        st.warning(f"Performance: {str(e)[:100]}")
 
 # Footer
 st.sidebar.divider()
