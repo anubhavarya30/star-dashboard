@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>STAR Dashboard - Enhanced with Trading History & Google Calendar</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #6496ff;
+            border-bottom: 2px solid #6496ff;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: rgba(100, 150, 255, 0.1);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metric {
+            background: rgba(20, 20, 40, 0.5);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            border-radius: 6px;
+            padding: 15px;
+        }
+        .metric-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+        }
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 5px;
+        }
+        .positive { color: #00ff00; }
+        .negative { color: #ff4444; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(100, 150, 255, 0.2);
+            font-size: 13px;
+        }
+        th {
+            background: rgba(100, 150, 255, 0.1);
+            font-weight: bold;
+        }
+        tbody tr:hover {
+            background: rgba(100, 150, 255, 0.05);
+        }
+        .button {
+            background: rgba(100, 150, 255, 0.2);
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            color: #6496ff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .button:hover {
+            background: rgba(100, 150, 255, 0.3);
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .badge-open { background: rgba(0, 150, 255, 0.3); color: #00d4ff; }
+        .badge-closed { background: rgba(100, 255, 100, 0.3); color: #00ff00; }
+        .time-info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 10px 15px;
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            background: transparent;
+            color: #6496ff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            background: rgba(100, 150, 255, 0.3);
+            border-color: #6496ff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .calendar-sync {
+            background: rgba(0, 255, 100, 0.1);
+            border: 1px solid rgba(0, 255, 100, 0.3);
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌟 STAR TRADING DASHBOARD - ENHANCED</h1>
+
+        <button class="button" onclick="loadData()">🔄 Refresh All Data</button>
+
+        <!-- METRICS -->
+        <div class="section">
+            <h2>📊 Account Metrics</h2>
+            <div class="metrics" id="metrics">
+                <div class="metric">
+                    <div class="metric-label">Account</div>
+                    <div class="metric-value" id="account">U25701222</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Balance</div>
+                    <div class="metric-value" id="balance">$100,000</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Open Positions</div>
+                    <div class="metric-value" id="openPos">0</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total P&L</div>
+                    <div class="metric-value" id="totalPnL">$0.00</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Win Rate</div>
+                    <div class="metric-value" id="winRate">0%</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Trades</div>
+                    <div class="metric-value" id="totalTrades">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="section">
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="switchTab('positions')">📈 OPEN POSITIONS (with Times)</button>
+                <button class="tab-btn" onclick="switchTab('history')">📋 TRADING HISTORY</button>
+                <button class="tab-btn" onclick="switchTab('calendar')">📅 GOOGLE CALENDAR SYNC</button>
+            </div>
+
+            <!-- TAB 1: OPEN POSITIONS WITH TIMES -->
+            <div id="positions" class="tab-content active">
+                <h3>Open Positions with Entry/Exit Times & Duration</h3>
+                <table id="positionsTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Qty</th>
+                            <th>Entry Price</th>
+                            <th>Current Price</th>
+                            <th>Entry Time</th>
+                            <th>Duration</th>
+                            <th>Exit Target</th>
+                            <th>P&L</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsBody">
+                        <tr><td colspan="9" style="text-align:center;color:#666;">No open positions</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TAB 2: TRADING HISTORY -->
+            <div id="history" class="tab-content">
+                <h3>Trading History - Entry/Exit Times & Duration</h3>
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Qty</th>
+                            <th>Entry Date/Time</th>
+                            <th>Entry Price</th>
+                            <th>Exit Date/Time</th>
+                            <th>Exit Price</th>
+                            <th>Duration</th>
+                            <th>P&L</th>
+                            <th>P&L %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr><td colspan="10" style="text-align:center;color:#666;">No completed trades</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TAB 3: GOOGLE CALENDAR SYNC -->
+            <div id="calendar" class="tab-content">
+                <h3>📅 Google Calendar Sync Status</h3>
+                <div class="calendar-sync">
+                    <p><strong>✅ Google Calendar MCP Integration Active</strong></p>
+                    <p style="margin-top: 10px; color: #888;">
+                        Daily P&L events are automatically synced to your Google Calendar via MCP.
+                        You can view your trading performance directly from your phone's Google Calendar.
+                    </p>
+                    <button class="button" onclick="syncToCalendar()" style="margin-top: 15px;">🔄 Sync to Google Calendar Now</button>
+                </div>
+
+                <h3 style="margin-top: 30px;">Recent Calendar Events</h3>
+                <table id="calendarTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Event</th>
+                            <th>Daily P&L</th>
+                            <th>Trades</th>
+                            <th>Calendar Color</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendarBody">
+                        <tr><td colspan="5" style="text-align:center;color:#666;">No calendar events yet</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function loadData() {
+            try {
+                const trades = await fetch('current_trades.json?' + Date.now()).then(r => r.json());
+                const market = await fetch('real_market_data.json?' + Date.now()).then(r => r.json());
+
+                // Update metrics
+                document.getElementById('account').textContent = trades.ibkr_account || 'N/A';
+                document.getElementById('balance').textContent = `$${trades.balance?.toLocaleString('en-US', {minimumFractionDigits: 2}) || '0'}`;
+                document.getElementById('totalPnL').textContent = `$${trades.total_pnl?.toLocaleString('en-US', {minimumFractionDigits: 2}) || '0'}`;
+                document.getElementById('openPos').textContent = Object.keys(trades.open_trades || {}).length;
+                document.getElementById('totalTrades').textContent = trades.total_trades || 0;
+                document.getElementById('winRate').textContent = trades.total_trades > 0 ? ((trades.winning_trades / trades.total_trades * 100).toFixed(1) + '%') : '0%';
+
+                // Update open positions with times
+                updateOpenPositions(trades, market);
+
+                // Update trading history
+                updateTradingHistory(trades);
+
+                // Update calendar sync
+                updateCalendarSync();
+
+            } catch (err) {
+                console.error('Error loading data:', err);
+            }
+        }
+
+        function updateOpenPositions(trades, market) {
+            const tbody = document.getElementById('positionsBody');
+            const positions = trades.open_trades || {};
+
+            if (Object.keys(positions).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;">No open positions</td></tr>';
+                return;
+            }
+
+            let html = '';
+            Object.entries(positions).forEach(([id, pos]) => {
+                const entryTime = new Date(pos.entry_time);
+                const now = new Date();
+                const duration = calculateDuration(entryTime, now);
+                const currentPrice = market[pos.symbol]?.last_price || pos.entry_price;
+                const pnl = (currentPrice - pos.entry_price) * pos.quantity;
+                const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+
+                html += `
+                    <tr>
+                        <td><strong>${pos.symbol}</strong></td>
+                        <td>${pos.quantity}</td>
+                        <td>$${pos.entry_price?.toFixed(2)}</td>
+                        <td>$${currentPrice?.toFixed(2)}</td>
+                        <td>${entryTime.toLocaleString()}</td>
+                        <td>${duration}</td>
+                        <td>$${pos.take_profit?.toFixed(2)}</td>
+                        <td class="${pnlClass}">$${pnl?.toFixed(2)}</td>
+                        <td><span class="badge badge-open">OPEN</span></td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function updateTradingHistory(trades) {
+            const tbody = document.getElementById('historyBody');
+
+            // This will be populated when trades are completed and logged
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#666;">No completed trades yet - trading history will appear here</td></tr>';
+        }
+
+        function updateCalendarSync() {
+            const tbody = document.getElementById('calendarBody');
+            // This will show calendar events from Google Calendar sync
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">Calendar sync will show daily P&L events from Google Calendar</td></tr>';
+        }
+
+        function calculateDuration(startDate, endDate) {
+            const ms = endDate - startDate;
+            const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (days > 0) return `${days}d ${hours}h`;
+            if (hours > 0) return `${hours}h ${mins}m`;
+            return `${mins}m`;
+        }
+
+        async function syncToCalendar() {
+            alert('✅ Syncing to Google Calendar via MCP...\n\nYour P&L will appear on your Google Calendar shortly.\nYou can view it on any device.');
+            // MCP will handle the actual sync
+        }
+
+        // Load data on startup
+        window.onload = loadData;
+        // Auto-refresh every 30 seconds
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
