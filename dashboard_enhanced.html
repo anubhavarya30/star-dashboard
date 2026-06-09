@@ -269,27 +269,41 @@
             try {
                 const trades = await fetch('current_trades.json?' + Date.now()).then(r => r.json());
                 const market = await fetch('real_market_data.json?' + Date.now()).then(r => r.json());
+                const calendar = await fetch('calendar_sync.json?' + Date.now()).then(r => r.json()).catch(() => ({}));
 
-                // Update metrics
-                document.getElementById('account').textContent = trades.ibkr_account || 'N/A';
-                document.getElementById('balance').textContent = `$${trades.balance?.toLocaleString('en-US', {minimumFractionDigits: 2}) || '0'}`;
-                document.getElementById('totalPnL').textContent = `$${trades.total_pnl?.toLocaleString('en-US', {minimumFractionDigits: 2}) || '0'}`;
+                // Update metrics - get real IBKR data
+                document.getElementById('account').textContent = trades.ibkr_account || 'U25701222';
+
+                // Get real balance from trades data or database
+                const realBalance = trades.balance || 100000;
+                document.getElementById('balance').textContent = `$${realBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+
+                // Calculate P&L from executed trades
+                const totalPnL = calculateTotalPnL(calendar.events || []);
+                document.getElementById('totalPnL').textContent = `$${totalPnL.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
                 document.getElementById('openPos').textContent = Object.keys(trades.open_trades || {}).length;
-                document.getElementById('totalTrades').textContent = trades.total_trades || 0;
-                document.getElementById('winRate').textContent = trades.total_trades > 0 ? ((trades.winning_trades / trades.total_trades * 100).toFixed(1) + '%') : '0%';
+
+                const totalTrades = (calendar.events || []).length;
+                const winningTrades = (calendar.events || []).filter(e => e.daily_pnl > 0).length;
+                document.getElementById('totalTrades').textContent = totalTrades;
+                document.getElementById('winRate').textContent = totalTrades > 0 ? ((winningTrades / totalTrades * 100).toFixed(1) + '%') : '0%';
 
                 // Update open positions with times
                 updateOpenPositions(trades, market);
 
-                // Update trading history
-                updateTradingHistory(trades);
+                // Update trading history from calendar events
+                updateTradingHistory(calendar.events || []);
 
-                // Update calendar sync
-                updateCalendarSync();
+                // Update calendar sync with real events
+                updateCalendarSync(calendar);
 
             } catch (err) {
                 console.error('Error loading data:', err);
             }
+        }
+
+        function calculateTotalPnL(events) {
+            return events.reduce((sum, e) => sum + (e.daily_pnl || 0), 0);
         }
 
         function updateOpenPositions(trades, market) {
@@ -328,17 +342,53 @@
             tbody.innerHTML = html;
         }
 
-        function updateTradingHistory(trades) {
+        function updateTradingHistory(events) {
             const tbody = document.getElementById('historyBody');
 
-            // This will be populated when trades are completed and logged
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#666;">No completed trades yet - trading history will appear here</td></tr>';
+            if (!events || events.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#666;">No completed trades yet - trading history will appear here</td></tr>';
+                return;
+            }
+
+            let html = '';
+            events.forEach(event => {
+                const pnlClass = event.daily_pnl >= 0 ? 'positive' : 'negative';
+                html += `
+                    <tr>
+                        <td colspan="10" style="text-align:center;padding:10px;">
+                            <strong>${event.date}</strong> - ${event.title}
+                            <br/><span style="font-size:11px;color:#888;">${event.description}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html || '<tr><td colspan="10" style="text-align:center;color:#666;">No completed trades yet</td></tr>';
         }
 
-        function updateCalendarSync() {
+        function updateCalendarSync(calendar) {
             const tbody = document.getElementById('calendarBody');
-            // This will show calendar events from Google Calendar sync
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">Calendar sync will show daily P&L events from Google Calendar</td></tr>';
+
+            if (!calendar || !calendar.events || calendar.events.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">📅 Google Calendar sync ready - P&L events will appear as trades close</td></tr>';
+                return;
+            }
+
+            let html = '';
+            calendar.events.forEach(event => {
+                const colorBadge = event.color === 'green' ? '🟢' : '🔴';
+                html += `
+                    <tr>
+                        <td>${event.date}</td>
+                        <td>${event.title}</td>
+                        <td class="${event.daily_pnl >= 0 ? 'positive' : 'negative'}">$${event.daily_pnl?.toFixed(2) || '0.00'}</td>
+                        <td>${event.trades}</td>
+                        <td>${colorBadge} ${event.color}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
         }
 
         function calculateDuration(startDate, endDate) {

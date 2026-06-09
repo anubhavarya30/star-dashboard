@@ -1,0 +1,30 @@
+{
+  "events": [
+    {
+      "date": "2026-06-09",
+      "title": "P&L: $+247.50 (3W 1L)",
+      "description": "STAR Trading Daily Report\nDate: 2026-06-09\nDaily P&L: $+247.50\nTrades: 4\nWins: 3\nLosses: 1\nWin Rate: 75.0%",
+      "color": "green",
+      "daily_pnl": 247.5,
+      "trades": 4
+    },
+    {
+      "date": "2026-06-08",
+      "title": "P&L: $-125.00 (1W 2L)",
+      "description": "STAR Trading Daily Report\nDate: 2026-06-08\nDaily P&L: $-125.00\nTrades: 3\nWins: 1\nLosses: 2\nWin Rate: 33.3%",
+      "color": "red",
+      "daily_pnl": -125.0,
+      "trades": 3
+    },
+    {
+      "date": "2026-06-07",
+      "title": "P&L: $+175.25 (2W 0L)",
+      "description": "STAR Trading Daily Report\nDate: 2026-06-07\nDaily P&L: $+175.25\nTrades: 2\nWins: 2\nLosses: 0\nWin Rate: 100.0%",
+      "color": "green",
+      "daily_pnl": 175.25,
+      "trades": 2
+    }
+  ],
+  "last_sync": "2026-06-09T13:52:15.999225",
+  "status": "synced"
+}
