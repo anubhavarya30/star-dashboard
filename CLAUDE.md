@@ -89,19 +89,14 @@ profile, 8 news headlines, IBKR portfolio).
 
 ## ▶️ NEXT STEP (resume here)
 
-The user is **restarting Claude to load the "UI/UX Pro" plugin/skill** so the
-**Bloomberg-style terminal (`terminal.html`) can be redesigned more professionally**.
+**DONE this session:** `terminal.html` was professionally redesigned via the
+ui-ux-pro-max skill — IBM Plex Mono/Sans, OLED-deep dark, amber/green/red
+semantics, SVG icons (no emoji), skeleton loaders, focus rings, reduced-motion,
+refined Chart.js styling. Data layer unchanged (terminal_server.py endpoints).
 
-When you resume:
-1. The terminal already works and is wired to real data — **do not rebuild the
-   data layer.** Only restyle/upgrade the **UI** of `terminal.html` (and optionally
-   `dashboard.html`) using the UI/UX Pro skill, keeping the same API endpoints
-   from `terminal_server.py`.
-2. Keep it honest: delayed data labeled as such; no fabricated entry times; real
-   IBKR portfolio panel.
-3. The `ui-ux-pro-max-skill/` folder exists in the repo (gitignored). Use that
-   skill to drive a polished, Bloomberg-grade redesign.
-4. Restart the two background processes if they're not running (commands above).
+If iterating further: only touch UI in terminal.html; keep endpoints intact;
+keep data honest (delayed labels, no fabricated entry times).
 
-Pending optional asks (only if user requests): purge Supabase pkg + legacy
-scripts; push to origin; resolve paper-vs-live (7497) question.
+Pending optional asks (only if user requests): screenshot/visual QA in a
+browser; purge Supabase pkg + legacy scripts; push to origin; resolve
+paper-vs-live (7497) question.
