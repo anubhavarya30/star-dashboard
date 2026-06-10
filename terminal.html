@@ -47,6 +47,9 @@
   .strip .px{font-weight:600}
   .clock{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px;white-space:nowrap;letter-spacing:1px}
   .live{width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 7px var(--up);animation:pulse 2.4s infinite}
+  .live.warn{background:var(--amber);box-shadow:0 0 7px var(--amber)}
+  .live.bad{background:var(--down);box-shadow:0 0 7px var(--down)}
+  .clock.stale #freshness{color:var(--down)}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
   .grid{position:relative;z-index:2;display:grid;grid-template-columns:1.85fr 1fr;gap:12px;padding:12px;max-width:1720px;margin:0 auto}
@@ -151,7 +154,7 @@
     <kbd>↵</kbd>
   </form>
   <div class="strip" id="strip" aria-label="Market overview"></div>
-  <div class="clock"><span class="live" aria-hidden="true"></span><span id="clock"></span></div>
+  <div class="clock"><span class="live" id="liveDot" aria-hidden="true"></span><span id="freshness">connecting…</span></div>
 </header>
 
 <main class="grid">
@@ -263,11 +266,11 @@ function initCharts(){
   acctSeries=acctChart.addAreaSeries({lineColor:css("--amber"),topColor:"rgba(255,166,43,.28)",bottomColor:"rgba(255,166,43,0)",lineWidth:2});
 }
 
-async function loadChart(){
+async function loadChart(fit=true){
   const d=await api(`/api/ohlc?sym=${CUR}&range=${RANGE}`);
   priceChart.applyOptions({timeScale:{borderColor:"#1a2230",timeVisible:!!d.intraday,secondsVisible:false}});
   candleSeries.setData((d.bars||[]).map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
-  priceChart.timeScale().fitContent();
+  if(fit)priceChart.timeScale().fitContent();  // only reset view on symbol/range change, not on auto-refresh
 }
 async function loadAccountHistory(){
   const d=await api(`/api/account_history?days=30`),h=d.history||[];
@@ -303,8 +306,11 @@ async function loadNews(){
   $("news").innerHTML=items.length?items.map(i=>`<a href="${i.url}" target="_blank" rel="noopener"><span class="tt">${i.title}</span><span class="src">${i.publisher||""}</span></a>`).join(""):'<div class="empty">No recent headlines.</div>';
 }
 async function loadStrip(){
-  const m=await api(`/api/market`);
-  $("strip").innerHTML=(m.indices||[]).map(r=>{const c=cls(r.change_pct);return `<span class="it"><span class="lab">${r.label}</span><span class="px">${fmtN(r.last)}</span><span class="${c}">${pct(r.change_pct)}</span></span>`;}).join("");
+  try{
+    const m=await api(`/api/market`);
+    $("strip").innerHTML=(m.indices||[]).map(r=>{const c=cls(r.change_pct);return `<span class="it"><span class="lab">${r.label}</span><span class="px">${fmtN(r.last)}</span><span class="${c}">${pct(r.change_pct)}</span></span>`;}).join("");
+    DATA.market=Date.now();  // mark feed alive only on a real successful fetch
+  }catch(e){/* leave DATA.market stale so the dot turns red */}
 }
 
 /* ---------- Mag 7 ---------- */
@@ -325,8 +331,9 @@ async function loadMovers(){
 /* ---------- portfolio + trades ---------- */
 async function loadPortfolio(){
   const d=await api(`/api/portfolio`);
-  if(d.status!=="connected"){$("acct").innerHTML="";$("pf").innerHTML='<tr><td colspan="6" class="errline">IBKR not connected — run ibkr_live_sync.py</td></tr>';return;}
-  $("acctId").textContent=d.account_id||"";
+  if(d.status!=="connected"){$("acct").innerHTML="";$("pf").innerHTML='<tr><td colspan="6" class="errline">IBKR not connected — run ibkr_live_sync.py</td></tr>';DATA.ibkr=null;return;}
+  DATA.ibkr=d.last_update?new Date(d.last_update).getTime():Date.now();  // track real sync freshness
+  $("acctId").textContent=(d.account_id||"")+(d.last_update?" · as of "+new Date(d.last_update).toLocaleTimeString("en-US",{hour12:false}):"");
   $("acct").innerHTML=`<div class="b"><span class="k">Net Liq</span><span class="v">$${fmtN(d.net_liquidation)}</span></div><div class="b"><span class="k">Cash</span><span class="v">$${fmtN(d.cash)}</span></div><div class="b"><span class="k">Buying Power</span><span class="v">$${fmtN(d.buying_power)}</span></div>`;
   const pos=d.positions||[];
   $("pf").innerHTML=pos.length?pos.map(p=>{const c=cls(p.unrealized_pnl);return `<tr><td class="sym">${p.symbol}</td><td>${p.quantity}</td><td>${fmtN(p.avg_cost)}</td><td>${fmtN(p.market_price)}</td><td>${fmtN(p.market_value)}</td><td class="${c}">${p.unrealized_pnl>=0?"+":""}${fmtN(p.unrealized_pnl)}</td></tr>`;}).join(""):'<tr><td colspan="6" class="empty">No open positions</td></tr>';
@@ -344,13 +351,34 @@ $("ranges").addEventListener("click",e=>{if(e.target.dataset.r){RANGE=e.target.d
 document.addEventListener("click",e=>{const el=e.target.closest("[data-sym]");if(el)select(el.dataset.sym);});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"){const el=e.target.closest(".pick[data-sym]");if(el)select(el.dataset.sym);}});
 
-function loadAll(){loadQuote();loadStats();loadChart();loadNews();}
-function tick(){$("clock").textContent=new Date().toLocaleTimeString("en-US",{hour12:false})+" ET";}
-setInterval(tick,1000);tick();
+function loadAll(){loadQuote();loadStats();loadChart(true);loadNews();}
+
+/* ---------- freshness monitor ----------
+   DATA.market = last successful yfinance fetch; DATA.ibkr = live_account.json sync time.
+   The top-bar dot reflects the OLDEST critical feed so a dead sync/server is visible. */
+const DATA={market:null,ibkr:null};
+function ago(ms){const s=Math.round((Date.now()-ms)/1000);return s<60?s+"s":Math.floor(s/60)+"m "+(s%60)+"s";}
+function freshness(){
+  const now=Date.now();
+  const ages=[];
+  if(DATA.market)ages.push(now-DATA.market);
+  const dot=$("liveDot"),wrap=$("liveDot").parentElement,label=$("freshness");
+  if(!ages.length){dot.className="live bad";label.textContent="no data";wrap.classList.add("stale");return;}
+  const worst=Math.max(...ages);
+  // market data is ~15-min delayed anyway; flag the PIPELINE, not the delay:
+  // green if polled <60s ago, amber <150s, red beyond (poll is 30s, so >150s = something's wrong)
+  let st = worst<60000?"":worst<150000?"warn":"bad";
+  dot.className="live "+st; wrap.classList.toggle("stale",st==="bad");
+  let txt=new Date().toLocaleTimeString("en-US",{hour12:false})+" ET · feed "+ago(DATA.market);
+  if(DATA.ibkr) txt+=" · ibkr "+ago(DATA.ibkr);
+  if(st==="bad") txt="STALE — refresh feed "+ago(DATA.market);
+  label.textContent=txt;
+}
+setInterval(freshness,1000);
 
 initCharts();
-loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();
-setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();},30000);
+loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
+setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();},30000);
 </script>
 </body>
 </html>
