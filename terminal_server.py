@@ -82,22 +82,39 @@ def history(sym, rng):
 
 
 def ohlc(sym, rng):
-    """OHLC bars for candlestick charts (Lightweight Charts format)."""
-    period_map = {"1mo": ("1mo", "1d"), "6mo": ("6mo", "1d"),
-                  "1y": ("1y", "1d"), "5y": ("5y", "1wk")}
-    period, interval = period_map.get(rng, ("6mo", "1d"))
+    """OHLC bars for candlestick charts (Lightweight Charts format).
+    Intraday ranges return unix-second timestamps; daily/weekly return dates."""
+    # rng -> (period, interval, resample_rule)
+    cfg = {
+        "5m":  ("5d",  "5m",  None),
+        "1h":  ("1mo", "60m", None),
+        "4h":  ("3mo", "60m", "4h"),   # yfinance has no native 4h; resample 1h
+        "1mo": ("1mo", "1d",  None),
+        "6mo": ("6mo", "1d",  None),
+        "1y":  ("1y",  "1d",  None),
+        "5y":  ("5y",  "1wk", None),
+    }
+    period, interval, resample = cfg.get(rng, ("6mo", "1d", None))
+    intraday = interval.endswith("m") or interval.endswith("h")
 
     def build():
         df = yf.Ticker(sym).history(period=period, interval=interval)
+        if resample and not df.empty:
+            df = df.resample(resample).agg(
+                {"Open": "first", "High": "max", "Low": "min", "Close": "last"}
+            ).dropna()
         bars = []
         for idx, row in df.iterrows():
             o, h, l, c = num(row["Open"]), num(row["High"]), num(row["Low"]), num(row["Close"])
             if None in (o, h, l, c):
                 continue
-            bars.append({"time": idx.strftime("%Y-%m-%d"),
-                         "open": round(o, 2), "high": round(h, 2),
+            if intraday:
+                t = int(idx.tz_convert("UTC").timestamp()) if idx.tzinfo else int(idx.timestamp())
+            else:
+                t = idx.strftime("%Y-%m-%d")
+            bars.append({"time": t, "open": round(o, 2), "high": round(h, 2),
                          "low": round(l, 2), "close": round(c, 2)})
-        return {"symbol": sym.upper(), "range": rng, "bars": bars}
+        return {"symbol": sym.upper(), "range": rng, "bars": bars, "intraday": intraday}
     return cached(f"o:{sym}:{rng}", build)
 
 

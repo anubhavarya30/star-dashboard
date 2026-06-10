@@ -164,6 +164,9 @@
     <div class="ph" style="margin-top:18px">
       <span class="accent">Candlestick · TradingView Lightweight</span>
       <span class="ranges" id="ranges" role="tablist">
+        <button data-r="5m" role="tab">5MIN</button>
+        <button data-r="1h" role="tab">1H</button>
+        <button data-r="4h" role="tab">4H</button>
         <button data-r="1mo" role="tab">1M</button>
         <button data-r="6mo" class="active" role="tab">6M</button>
         <button data-r="1y" role="tab">1Y</button>
@@ -262,6 +265,7 @@ function initCharts(){
 
 async function loadChart(){
   const d=await api(`/api/ohlc?sym=${CUR}&range=${RANGE}`);
+  priceChart.applyOptions({timeScale:{borderColor:"#1a2230",timeVisible:!!d.intraday,secondsVisible:false}});
   candleSeries.setData((d.bars||[]).map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
   priceChart.timeScale().fitContent();
 }
