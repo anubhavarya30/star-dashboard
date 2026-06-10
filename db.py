@@ -155,6 +155,42 @@ def position_history(symbol: str, limit_days: int = 30):
     return [dict(r) for r in rows]
 
 
+def pnl_calendar(days: int = 35):
+    """Daily P&L for the calendar. Realized P&L per day from the executions
+    ledger, PLUS today's live unrealized P&L from open positions
+    (live_account.json) — so an open AMZN at -$17 shows as today's -$17, and
+    multiple open positions are summed."""
+    import json
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT date(ts) d, COALESCE(SUM(realized_pnl),0) r, COUNT(*) n"
+            " FROM executions WHERE ts >= date('now', ?) GROUP BY date(ts)",
+            (f"-{int(days)} days",),
+        ).fetchall()
+    by = {r["d"]: {"date": r["d"], "realized": round(r["r"], 2),
+                   "unrealized": 0.0, "trades": r["n"]} for r in rows}
+
+    # today's live unrealized from open positions
+    today = datetime.now().astimezone().date().isoformat()
+    unreal = 0.0
+    lf = DB_PATH.parent / "live_account.json"
+    if lf.exists():
+        try:
+            d = json.loads(lf.read_text())
+            if d.get("status") == "connected":
+                unreal = sum((p.get("unrealized_pnl") or 0) for p in d.get("positions", []))
+        except Exception:
+            pass
+    if unreal or today in by:
+        e = by.get(today, {"date": today, "realized": 0.0, "unrealized": 0.0, "trades": 0})
+        e["unrealized"] = round(unreal, 2)
+        by[today] = e
+
+    for e in by.values():
+        e["total"] = round(e["realized"] + e["unrealized"], 2)
+    return sorted(by.values(), key=lambda x: x["date"])
+
+
 def stats():
     with _conn() as c:
         a = c.execute("SELECT count(*) FROM account_snapshots").fetchone()[0]

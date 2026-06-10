@@ -15,23 +15,36 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 
+import sys
 import yfinance as yf
 import db
 
 HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE / "engine"))  # let us import the engine/ trading brain
 PORT = 8080
 _cache = {}            # tiny TTL cache to avoid hammering yfinance
 CACHE_TTL = 20         # seconds
 
 
-def cached(key, fn):
+def cached(key, fn, ttl=CACHE_TTL):
     now = time.time()
     hit = _cache.get(key)
-    if hit and now - hit[0] < CACHE_TTL:
+    if hit and now - hit[0] < ttl:
         return hit[1]
     val = fn()
     _cache[key] = (now, val)
     return val
+
+
+def agents():
+    def build():
+        import star_agents
+        return star_agents.run()
+    return cached("agents", build, ttl=180)  # agent run is heavy; refresh every 3 min
+
+
+def pnl_calendar():
+    return cached("pnl", lambda: {"days": db.pnl_calendar(35)}, ttl=15)
 
 
 def num(x):
@@ -241,6 +254,33 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_POST(self):
+        u = urlparse(self.path)
+        if u.path == "/api/sync_calendar":
+            # Write today's P&L as a calendar-event payload that the Google sync
+            # picks up. Real push happens via the Google Calendar integration.
+            try:
+                days = db.pnl_calendar(35)
+                from datetime import datetime as _dt
+                today = _dt.now().astimezone().date().isoformat()
+                row = next((d for d in days if d["date"] == today), None)
+                total = row["total"] if row else 0.0
+                payload = {
+                    "date": today,
+                    "title": f"P&L {('+' if total>=0 else '')}{total:.2f}",
+                    "total": total,
+                    "realized": row["realized"] if row else 0.0,
+                    "unrealized": row["unrealized"] if row else 0.0,
+                    "queued_at": _dt.now().astimezone().isoformat(),
+                }
+                (HERE / "pnl_calendar_sync.json").write_text(json.dumps(payload, indent=2))
+                return self._send_json({"ok": True,
+                    "message": f"Queued {payload['title']} for {today}. "
+                               f"Run the Google Calendar sync to push it to your phone."})
+            except Exception as e:
+                return self._send_json({"ok": False, "message": f"{type(e).__name__}: {e}"}, code=500)
+        self.send_error(404)
+
     def do_GET(self):
         u = urlparse(self.path)
         q = parse_qs(u.query)
@@ -266,6 +306,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(market_overview())
             if u.path == "/api/portfolio":
                 return self._send_json(portfolio())
+            if u.path == "/api/agents":
+                return self._send_json(agents())
+            if u.path == "/api/pnl_calendar":
+                return self._send_json(pnl_calendar())
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":
