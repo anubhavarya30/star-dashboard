@@ -91,23 +91,27 @@ profile, 8 news headlines, IBKR portfolio).
 
 ## ▶️ NEXT STEP (resume here)
 
-**DONE this session (all verified with real data):**
-1. ui-ux-pro-max redesign of terminal.html (IBM Plex, OLED dark, SVG icons).
-2. SQLite history layer (db.py): account/position snapshots + executions ledger;
-   endpoints /api/account_history, /api/trades.
-3. **Charts → TradingView Lightweight Charts** (candlesticks for price via new
-   /api/ohlc; area line for account value). Chart.js removed.
-4. **Mag 7 rail** (right side, click-to-load) via /api/mag7.
-5. **Market Movers** panel — gainers/losers/most-active via /api/movers
-   (webull_movers.py, public Webull data, no login).
+**FOLDER RESTRUCTURED (see README.md):**
+- root = LIVE terminal (terminal_server.py, terminal.html, ibkr_live_sync.py,
+  run_sync_loop.py, db.py, webull_movers.py, live_account.json, star_trading.db).
+  Self-contained; imports nothing from engine/. Still running on :8080.
+- engine/ = STAR trading-brain FOUNDATION (not wired): star_brain (CEO),
+  multi_agent_orchestrator, agents, trading_signals, position_manager,
+  market_data_provider, indicators, strategies, ibkr_*, tradingview_connector,
+  + agent_aggregator/daily_routine_planner/data_providers (still Supabase — fix first).
+- _legacy/ = archived prototypes (gitignored, on disk).
+- .claude/skills/ (ui-ux-pro-max plugin) gitignored.
 
-Webull note: APP_KEY/APP_SECRET in .env are for the official OpenAPI (NOT installed,
-not used). Movers use the unofficial `webull` 0.6.1 PUBLIC endpoint which works
-without auth. If deeper Webull data is wanted, would need webull-python-sdk-* + auth.
+**The STAR vision (next real work):** STAR = CEO agent. Supporting agents in
+engine/ feed it data/signals; STAR combines them with the trading concepts
+(VW-RSI in trading_signals.py + risk in position_manager.py) to trade via IBKR.
+Honest state: agents are half-stubbed / half-Supabase-dead and NOT wired to the
+live system. To build it: (1) de-Supabase agent_aggregator/daily_routine_planner/
+data_providers, (2) replace multi_agent_orchestrator stub logic with real analysis,
+(3) wire STAR output → ibkr_live_trader, (4) record fills via db.executions.
 
-terminal_server.py endpoints: quote, history, ohlc, profile, news, market, mag7,
-movers, portfolio, account_history, trades. Run: terminal_server.py (8080) +
-run_sync_loop.py. Honest: trades empty until account trades; acct chart grows per sync.
+Run cmds now: `./venv/bin/python3 run_sync_loop.py &` and
+`./venv/bin/python3 terminal_server.py &` → http://localhost:8080/
 
-Pending optional: visual browser QA; purge Supabase/legacy; push to origin;
-resolve paper-vs-live (7497).
+Pending optional: visual browser QA (done once); push to origin; real-time data
+subscription (deferred by user until real money); resolve paper-vs-live (7497).
