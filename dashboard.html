@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STAR — Live IBKR Account</title>
+<style>
+  :root { --bg:#0f0f1e; --panel:#171728; --line:#2a2a44; --txt:#e6e6f0; --muted:#8a8aa0;
+          --blue:#6496ff; --green:#22c55e; --red:#ef4444; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--txt); padding:24px; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  h1 { font-size:22px; color:var(--blue); font-weight:600; }
+  .status { font-size:13px; color:var(--muted); }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .dot.ok { background:var(--green); } .dot.err { background:var(--red); }
+  .sub { font-size:12px; color:var(--muted); margin-bottom:20px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card .label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .card .val { font-size:24px; font-weight:700; margin-top:6px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px; }
+  .panel h2 { font-size:15px; margin-bottom:14px; font-weight:600; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:11px 10px; font-size:13px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; }
+  .pos { color:var(--green); } .neg { color:var(--red); }
+  .empty { text-align:center; color:var(--muted); padding:24px; }
+  .err-box { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.4); border-radius:8px; padding:14px; color:#ffb4b4; font-size:14px; }
+  .note { font-size:11px; color:var(--muted); margin-top:14px; line-height:1.6; }
+  .muted { color:var(--muted); }
+  button { background:rgba(100,150,255,.15); border:1px solid rgba(100,150,255,.4); color:var(--blue);
+           padding:8px 14px; border-radius:7px; cursor:pointer; font-size:13px; }
+  button:hover { background:rgba(100,150,255,.28); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🌟 STAR — Live IBKR Account</h1>
+    <div class="status" id="status"><span class="dot err"></span>loading…</div>
+  </header>
+  <div class="sub" id="sub">Reading live_account.json…</div>
+
+  <div id="errArea"></div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="panel">
+    <h2>Open Positions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Symbol</th><th>Qty</th><th>Avg Cost</th><th>Market Price</th>
+          <th>Market Value</th><th>Unrealized P&amp;L</th><th>Entry Time</th>
+        </tr>
+      </thead>
+      <tbody id="posBody">
+        <tr><td colspan="7" class="empty">Loading…</td></tr>
+      </tbody>
+    </table>
+    <div class="note" id="note"></div>
+  </div>
+
+  <div style="margin-top:18px;"><button onclick="load()">🔄 Refresh now</button></div>
+</div>
+
+<script>
+const money = n => (n==null||isNaN(n)) ? '—' : '$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+async function load() {
+  let d;
+  try {
+    d = await fetch('live_account.json?t='+Date.now()).then(r=>r.json());
+  } catch (e) {
+    document.getElementById('status').innerHTML = '<span class="dot err"></span>cannot read live_account.json';
+    return;
+  }
+
+  const errArea = document.getElementById('errArea');
+  if (d.status === 'error') {
+    document.getElementById('status').innerHTML = '<span class="dot err"></span>TWS not connected';
+    errArea.innerHTML = `<div class="err-box"><strong>IBKR sync failed:</strong> ${d.error||'unknown'}<br>
+      Make sure TWS is running and logged in on port 7497, then run <code>python3 ibkr_live_sync.py</code>.</div>`;
+    document.getElementById('cards').innerHTML = '';
+    document.getElementById('posBody').innerHTML = '<tr><td colspan="7" class="empty">No live data</td></tr>';
+    return;
+  }
+  errArea.innerHTML = '';
+
+  const updated = d.last_update ? new Date(d.last_update).toLocaleString() : '—';
+  document.getElementById('status').innerHTML = '<span class="dot ok"></span>connected · '+(d.account_id||'');
+  document.getElementById('sub').textContent = 'Last synced: '+updated;
+
+  // cards — REAL account values
+  document.getElementById('cards').innerHTML = `
+    <div class="card"><div class="label">Net Liquidation</div><div class="val">${money(d.net_liquidation)}</div></div>
+    <div class="card"><div class="label">Cash</div><div class="val">${money(d.cash)}</div></div>
+    <div class="card"><div class="label">Buying Power</div><div class="val">${money(d.buying_power)}</div></div>
+    <div class="card"><div class="label">Position Value</div><div class="val">${money(d.gross_position_value)}</div></div>
+  `;
+
+  // positions
+  const tb = document.getElementById('posBody');
+  const pos = d.positions || [];
+  if (!pos.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">No open positions</td></tr>';
+  } else {
+    tb.innerHTML = pos.map(p => {
+      const cls = (p.unrealized_pnl||0) >= 0 ? 'pos' : 'neg';
+      const sign = (p.unrealized_pnl||0) >= 0 ? '+' : '';
+      return `<tr>
+        <td><strong>${p.symbol}</strong></td>
+        <td>${p.quantity}</td>
+        <td>${money(p.avg_cost)}</td>
+        <td>${money(p.market_price)}</td>
+        <td>${money(p.market_value)}</td>
+        <td class="${cls}">${sign}${money(p.unrealized_pnl).replace('$','$')}</td>
+        <td class="muted">${p.entry_time ? new Date(p.entry_time).toLocaleString() : 'not available from API'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('note').innerHTML =
+    `Prices: ${d.price_source||'—'}. ` +
+    `Entry time is only recorded for trades placed through STAR going forward — ` +
+    `IBKR's API does not expose entry timestamps for pre-existing positions.`;
+}
+
+load();
+setInterval(load, 15000);  // refresh display every 15s (sync script updates the file)
+</script>
+</body>
+</html>
