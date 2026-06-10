@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STAR TERMINAL</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{
+    --bg:#000; --panel:#0a0e14; --panel2:#0f1620; --line:#1c2733;
+    --amber:#ff9e2c; --amber-dim:#b9741f; --txt:#d7e0ea; --muted:#6b7c8f;
+    --green:#26d07c; --red:#ff4d4d; --blue:#4ea1ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+  /* top bar */
+  .topbar{display:flex;align-items:center;gap:14px;background:var(--panel);border-bottom:2px solid var(--amber);padding:8px 14px;position:sticky;top:0;z-index:10}
+  .brand{color:var(--amber);font-weight:700;letter-spacing:2px;font-size:15px;white-space:nowrap}
+  .brand small{color:var(--muted);font-weight:400;letter-spacing:1px}
+  .cmd{flex:0 0 auto;display:flex;align-items:center;gap:6px;background:#000;border:1px solid var(--amber-dim);border-radius:3px;padding:4px 8px}
+  .cmd input{background:transparent;border:none;outline:none;color:var(--amber);font-family:inherit;font-size:14px;width:130px;text-transform:uppercase;letter-spacing:1px}
+  .cmd label{color:var(--muted);font-size:11px}
+  .ticker-strip{flex:1;display:flex;gap:18px;overflow:hidden;white-space:nowrap;font-size:12px}
+  .ticker-strip .it{display:flex;gap:6px;align-items:baseline}
+  .ticker-strip .lab{color:var(--muted)}
+  .clock{color:var(--muted);font-size:11px;white-space:nowrap}
+  /* layout */
+  .grid{display:grid;grid-template-columns:1.7fr 1fr;gap:1px;background:var(--line);padding:1px}
+  .panel{background:var(--panel);padding:14px}
+  .full{grid-column:1 / -1}
+  .ph{color:var(--amber);font-size:11px;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+  /* quote header */
+  .qhead{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+  .qsym{font-size:30px;font-weight:700;color:#fff;letter-spacing:1px}
+  .qname{color:var(--muted);font-size:13px;margin-top:2px}
+  .qpx{font-size:34px;font-weight:700}
+  .qchg{font-size:16px;font-weight:600}
+  .up{color:var(--green)} .down{color:var(--red)}
+  /* range buttons */
+  .ranges{display:flex;gap:4px}
+  .ranges button{background:#000;border:1px solid var(--line);color:var(--muted);font-family:inherit;font-size:11px;padding:3px 9px;cursor:pointer;border-radius:2px}
+  .ranges button.active{border-color:var(--amber);color:var(--amber)}
+  /* stats */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+  .stat{background:var(--panel);padding:9px 11px;display:flex;justify-content:space-between}
+  .stat .k{color:var(--muted)} .stat .v{color:var(--txt);font-weight:600}
+  /* profile */
+  .summary{color:#b3c0cd;line-height:1.65;font-size:12.5px;max-height:150px;overflow:auto}
+  .tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tag{background:var(--panel2);border:1px solid var(--line);color:var(--blue);padding:2px 9px;border-radius:3px;font-size:11px}
+  /* news */
+  .news a{display:block;color:var(--txt);text-decoration:none;padding:8px 0;border-bottom:1px solid var(--line);line-height:1.4}
+  .news a:hover{color:var(--amber)}
+  .news .src{color:var(--muted);font-size:11px}
+  /* portfolio */
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:right;padding:6px 10px;font-size:12px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px}
+  th:first-child,td:first-child{text-align:left}
+  .acct{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:10px}
+  .acct .b{display:flex;flex-direction:column}
+  .acct .b .k{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px}
+  .acct .b .v{font-size:18px;font-weight:700}
+  .loading{color:var(--muted);font-style:italic}
+  .err{color:var(--red);font-size:12px}
+  .foot{color:var(--muted);font-size:11px;padding:10px 14px;border-top:1px solid var(--line);background:var(--panel)}
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">STAR<small> TERMINAL</small></div>
+  <form class="cmd" onsubmit="go(event)">
+    <label>TICKER</label>
+    <input id="symInput" placeholder="AAPL" autocomplete="off" spellcheck="false">
+    <span style="color:var(--muted);font-size:11px">⏎</span>
+  </form>
+  <div class="ticker-strip" id="strip"></div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div class="grid">
+  <!-- LEFT: quote + chart -->
+  <div class="panel">
+    <div class="qhead">
+      <div>
+        <div class="qsym" id="qsym">—</div>
+        <div class="qname" id="qname"></div>
+      </div>
+      <div>
+        <div class="qpx" id="qpx">—</div>
+        <div class="qchg" id="qchg"></div>
+      </div>
+    </div>
+    <div class="ph" style="margin-top:16px">
+      <span>Price</span>
+      <span class="ranges" id="ranges">
+        <button data-r="1mo">1M</button>
+        <button data-r="6mo" class="active">6M</button>
+        <button data-r="1y">1Y</button>
+        <button data-r="5y">5Y</button>
+      </span>
+    </div>
+    <div style="height:300px"><canvas id="chart"></canvas></div>
+  </div>
+
+  <!-- RIGHT: key stats -->
+  <div class="panel">
+    <div class="ph">Key Statistics</div>
+    <div class="stats" id="stats"><div class="stat loading">loading…</div></div>
+  </div>
+
+  <!-- profile -->
+  <div class="panel full">
+    <div class="ph"><span>Company Profile</span><span id="recoTag"></span></div>
+    <div class="tags" id="tags"></div>
+    <div class="summary" id="summary">—</div>
+  </div>
+
+  <!-- news -->
+  <div class="panel">
+    <div class="ph">Latest News</div>
+    <div class="news" id="news"><div class="loading">loading…</div></div>
+  </div>
+
+  <!-- portfolio (real IBKR) -->
+  <div class="panel">
+    <div class="ph"><span>Your IBKR Portfolio</span><span id="acctId" style="color:var(--muted);font-size:10px"></span></div>
+    <div class="acct" id="acct"></div>
+    <table>
+      <thead><tr><th>Sym</th><th>Qty</th><th>Avg</th><th>Last</th><th>Value</th><th>P&amp;L</th></tr></thead>
+      <tbody id="pf"><tr><td colspan="6" class="loading">loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="foot" id="foot">
+  Data: yfinance (real, ~15-min delayed) · IBKR portfolio via TWS (delayed prices). For research, not order routing.
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let CUR = "AAPL", RANGE = "6mo", chart;
+
+const fmtN = (n,d=2) => (n==null||isNaN(n)) ? "—" : Number(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtBig = n => {
+  if(n==null||isNaN(n)) return "—";
+  const a=Math.abs(n);
+  if(a>=1e12) return "$"+(n/1e12).toFixed(2)+"T";
+  if(a>=1e9)  return "$"+(n/1e9).toFixed(2)+"B";
+  if(a>=1e6)  return "$"+(n/1e6).toFixed(2)+"M";
+  if(a>=1e3)  return (n/1e3).toFixed(1)+"K";
+  return fmtN(n);
+};
+const pct = n => (n==null||isNaN(n)) ? "—" : (n>=0?"+":"")+n.toFixed(2)+"%";
+const cls = n => (n==null) ? "" : (n>=0?"up":"down");
+
+async function api(path){ const r = await fetch(path); return r.json(); }
+
+function go(e){ e.preventDefault(); const v=$("symInput").value.trim().toUpperCase(); if(v){ CUR=v; loadAll(); $("symInput").value=""; } }
+
+async function loadQuote(){
+  const q = await api(`/api/quote?sym=${CUR}`);
+  if(q.error||q.last==null){ $("qsym").textContent=CUR; $("qpx").textContent="no data"; return; }
+  $("qsym").textContent = q.symbol;
+  $("qpx").textContent = "$"+fmtN(q.last);
+  const c=cls(q.change);
+  $("qpx").className="qpx "+c;
+  $("qchg").className="qchg "+c;
+  $("qchg").textContent = `${q.change>=0?"▲":"▼"} ${fmtN(Math.abs(q.change))}  (${pct(q.change_pct)})`;
+}
+
+async function loadStats(){
+  const q = await api(`/api/quote?sym=${CUR}`);
+  const p = await api(`/api/profile?sym=${CUR}`);
+  const rows = [
+    ["Market Cap", fmtBig(q.market_cap)],
+    ["P/E (ttm)", fmtN(p.pe)],
+    ["Forward P/E", fmtN(p.forward_pe)],
+    ["EPS (ttm)", fmtN(p.eps)],
+    ["Beta", fmtN(p.beta)],
+    ["Div Yield", p.dividend_yield!=null?fmtN(p.dividend_yield*100)+"%":"—"],
+    ["Day Range", `${fmtN(q.day_low)} – ${fmtN(q.day_high)}`],
+    ["52W Range", `${fmtN(q.year_low)} – ${fmtN(q.year_high)}`],
+    ["Volume", fmtBig(q.volume)],
+    ["Open / Prev", `${fmtN(q.open)} / ${fmtN(q.prev_close)}`],
+    ["Profit Margin", p.profit_margin!=null?fmtN(p.profit_margin*100)+"%":"—"],
+    ["Analyst Target", p.target_mean!=null?"$"+fmtN(p.target_mean):"—"],
+  ];
+  $("stats").innerHTML = rows.map(([k,v])=>`<div class="stat"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  // profile panel
+  $("qname").textContent = p.name||"";
+  const tags=[];
+  if(p.sector) tags.push(p.sector);
+  if(p.industry) tags.push(p.industry);
+  if(p.country) tags.push(p.country);
+  if(p.employees) tags.push(fmtBig(p.employees).replace("$","")+" employees");
+  $("tags").innerHTML = tags.map(t=>`<span class="tag">${t}</span>`).join("");
+  $("summary").textContent = p.summary || "No description available.";
+  $("recoTag").textContent = p.recommendation ? "Analyst: "+p.recommendation.toUpperCase() : "";
+  $("recoTag").style.color = "var(--amber)";
+}
+
+async function loadChart(){
+  const h = await api(`/api/history?sym=${CUR}&range=${RANGE}`);
+  const pts = h.points||[];
+  const labels = pts.map(p=>p.t.split(" ")[0]);
+  const data = pts.map(p=>p.c);
+  const up = data.length>1 && data[data.length-1]>=data[0];
+  const color = up ? "#26d07c" : "#ff4d4d";
+  const ctx = $("chart");
+  if(chart) chart.destroy();
+  chart = new Chart(ctx,{
+    type:"line",
+    data:{labels,datasets:[{data,borderColor:color,borderWidth:1.5,pointRadius:0,
+      fill:true,backgroundColor:(c)=>{const g=c.chart.ctx.createLinearGradient(0,0,0,300);
+        g.addColorStop(0,color+"33");g.addColorStop(1,color+"00");return g;},tension:.05}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{mode:"index",intersect:false,callbacks:{label:c=>"$"+fmtN(c.parsed.y)}}},
+      scales:{x:{ticks:{color:"#6b7c8f",maxTicksLimit:8,font:{size:10}},grid:{color:"#0f1620"}},
+              y:{position:"right",ticks:{color:"#6b7c8f",font:{size:10},callback:v=>"$"+v.toFixed(0)},grid:{color:"#0f1620"}}}}
+  });
+}
+
+async function loadNews(){
+  const n = await api(`/api/news?sym=${CUR}`);
+  const items=n.items||[];
+  $("news").innerHTML = items.length
+    ? items.map(i=>`<a href="${i.url}" target="_blank">${i.title}<span class="src"> — ${i.publisher}</span></a>`).join("")
+    : '<div class="loading">No recent headlines.</div>';
+}
+
+async function loadStrip(){
+  const m = await api(`/api/market`);
+  $("strip").innerHTML = (m.indices||[]).map(r=>{
+    const c=cls(r.change_pct);
+    return `<span class="it"><span class="lab">${r.label}</span><span>${fmtN(r.last)}</span><span class="${c}">${pct(r.change_pct)}</span></span>`;
+  }).join("");
+}
+
+async function loadPortfolio(){
+  const d = await api(`/api/portfolio`);
+  if(d.status!=="connected"){ $("pf").innerHTML='<tr><td colspan="6" class="err">IBKR not connected (run ibkr_live_sync.py)</td></tr>'; return; }
+  $("acctId").textContent = d.account_id||"";
+  $("acct").innerHTML = `
+    <div class="b"><span class="k">Net Liq</span><span class="v">$${fmtN(d.net_liquidation)}</span></div>
+    <div class="b"><span class="k">Cash</span><span class="v">$${fmtN(d.cash)}</span></div>
+    <div class="b"><span class="k">Buying Power</span><span class="v">$${fmtN(d.buying_power)}</span></div>`;
+  const pos=d.positions||[];
+  $("pf").innerHTML = pos.length ? pos.map(p=>{
+    const c=cls(p.unrealized_pnl);
+    return `<tr><td><strong>${p.symbol}</strong></td><td>${p.quantity}</td><td>${fmtN(p.avg_cost)}</td>
+      <td>${fmtN(p.market_price)}</td><td>${fmtN(p.market_value)}</td>
+      <td class="${c}">${p.unrealized_pnl>=0?"+":""}${fmtN(p.unrealized_pnl)}</td></tr>`;
+  }).join("") : '<tr><td colspan="6" class="loading">No open positions</td></tr>';
+}
+
+function loadAll(){ loadQuote(); loadStats(); loadChart(); loadNews(); }
+
+// range buttons
+$("ranges").addEventListener("click",e=>{
+  if(e.target.dataset.r){ RANGE=e.target.dataset.r;
+    [...$("ranges").children].forEach(b=>b.classList.toggle("active",b===e.target));
+    loadChart(); }
+});
+
+function tick(){ $("clock").textContent = new Date().toLocaleTimeString()+"  ET"; }
+setInterval(tick,1000); tick();
+
+loadAll(); loadStrip(); loadPortfolio();
+setInterval(()=>{ loadQuote(); loadStrip(); loadPortfolio(); }, 30000);
+</script>
+</body>
+</html>

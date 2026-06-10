@@ -1,11 +1,11 @@
 {
   "status": "connected",
   "account_id": "U25701222",
-  "net_liquidation": 484.3,
+  "net_liquidation": 482.44,
   "cash": 4.54,
   "buying_power": 4.54,
   "available_funds": 4.54,
-  "gross_position_value": 479.76,
+  "gross_position_value": 477.9,
   "unrealized_pnl": null,
   "realized_pnl": null,
   "positions": [
@@ -14,13 +14,13 @@
       "sec_type": "STK",
       "quantity": 2.0,
       "avg_cost": 247.7288,
-      "market_price": 239.88,
-      "market_value": 479.76,
-      "unrealized_pnl": -15.7,
+      "market_price": 238.95,
+      "market_value": 477.9,
+      "unrealized_pnl": -17.56,
       "realized_pnl": 0.0,
       "entry_time": null
     }
   ],
   "price_source": "IBKR delayed (no real-time subscription)",
-  "last_update": "2026-06-10T10:46:56.009800-05:00"
+  "last_update": "2026-06-10T12:56:59.415372-05:00"
 }
