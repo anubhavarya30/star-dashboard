@@ -38,7 +38,29 @@ _Last updated: 2026-06-10_
 10. **Deployment** — see below; not yet set up on the Mac mini.
 
 ## 🚀 Next-up candidates
-- Deploy to Mac mini (launchd services + remote access) — see DEPLOY.md (to be written)
 - SEC EDGAR 10-K scanning to auto-detect forensic review items
 - Wire forensic score + agent consensus into executor preview ("what STAR would trade")
 - Google Calendar push after restart
+
+## 🖥️ Deployment plan — Mac mini (server) + laptop (client)
+Mac mini = always-on server; laptop = browser + SSH client.
+Constraint: IBKR connection is local → TWS/IB Gateway MUST run on the mini.
+
+Runs on the mini:
+1. IB Gateway (lighter than TWS), API on 7497, + IBC (IB Controller) to auto
+   restart/re-login through IBKR's daily forced logout.
+2. run_sync_loop.py (IBKR sync every 30s)
+3. terminal_server.py (dashboard :8080)
+
+Keep alive across reboot/crash: macOS launchd plists (one per service).
+Access from laptop: Tailscale (recommended — secure, off-LAN, no open ports) →
+  http://mac-mini:8080 ; or LAN (bind 0.0.0.0) ; or SSH tunnel.
+Manage from laptop: enable Remote Login (SSH) → git pull + restart; Tailscale SSH.
+
+Caveats:
+- Dashboard has NO auth — keep it on Tailscale/LAN, never public-internet.
+- IB Gateway needs a logged-in GUI desktop session on the mini (not fully headless).
+
+To build when we start: launchd plists, deploy/ scripts (start/stop/status/update),
+make terminal_server bind host configurable via env (default localhost), DEPLOY.md.
+Decision needed: Tailscale vs LAN access.
