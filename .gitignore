@@ -10,3 +10,8 @@ _legacy/
 .claude/skills/
 orders_log.json
 pnl_calendar_sync.json
+live_account.json
+star_trading.db
+current_trades.json
+did.bin
+.claude/settings.local.json
