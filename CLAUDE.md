@@ -61,6 +61,7 @@ confirm this (done). Optional cleanup pending (uninstall pkg + archive legacy sc
 | **`terminal.html`** | **Bloomberg-style terminal UI** — amber/black monospace, ticker command bar, live index strip, quote header, Chart.js price chart with 1M/6M/1Y/5Y, key-stats grid, company profile, news, and a real IBKR portfolio panel. |
 | **`db.py`** | **SQLite history layer.** Tables: `account_snapshots`, `position_snapshots`, `executions` (real fills, dedup by exec_id). API: record_snapshot (throttled 5min), record_executions, account_history(), trades(), position_history(). |
 | `star_trading.db` | SQLite; now holds the history tables above + legacy `accounts` row. |
+| **`webull_movers.py`** | Top gainers/losers/most-active via Webull's PUBLIC ranking endpoint (no login; sidesteps the old OAuth failure). changeRatio is a fraction → ×100. |
 | `google_calendar_mcp.py` | P&L→Google Calendar sync (only real closed trades; currently 0). Not central. |
 
 Archived/contradicting fake files moved to `_archive_fake/` (gitignored):
@@ -90,18 +91,23 @@ profile, 8 news headlines, IBKR portfolio).
 
 ## ▶️ NEXT STEP (resume here)
 
-**DONE this session:**
-1. Redesigned `terminal.html` via ui-ux-pro-max (IBM Plex, OLED dark, SVG icons,
-   skeletons, focus rings, reduced-motion, refined Chart.js).
-2. Added **SQLite history layer** (`db.py`): every sync records a throttled
-   account+position snapshot; real IBKR fills captured into `executions` (dedup).
-   New endpoints `/api/account_history` and `/api/trades`. Dashboard now has an
-   **Account Value** history chart + **Trade History** table.
+**DONE this session (all verified with real data):**
+1. ui-ux-pro-max redesign of terminal.html (IBM Plex, OLED dark, SVG icons).
+2. SQLite history layer (db.py): account/position snapshots + executions ledger;
+   endpoints /api/account_history, /api/trades.
+3. **Charts → TradingView Lightweight Charts** (candlesticks for price via new
+   /api/ohlc; area line for account value). Chart.js removed.
+4. **Mag 7 rail** (right side, click-to-load) via /api/mag7.
+5. **Market Movers** panel — gainers/losers/most-active via /api/movers
+   (webull_movers.py, public Webull data, no login).
 
-Honest state: executions table is empty until the account actually trades
-(IBKR only returns current-session fills; the pre-existing AMZN has no fill). The
-account-value chart grows one point per sync (throttled to 5 min).
+Webull note: APP_KEY/APP_SECRET in .env are for the official OpenAPI (NOT installed,
+not used). Movers use the unofficial `webull` 0.6.1 PUBLIC endpoint which works
+without auth. If deeper Webull data is wanted, would need webull-python-sdk-* + auth.
 
-If iterating: UI only in terminal.html; keep endpoints + db.py contract intact;
-keep data honest. Pending optional: visual browser QA; purge Supabase/legacy;
-push to origin; resolve paper-vs-live (7497).
+terminal_server.py endpoints: quote, history, ohlc, profile, news, market, mag7,
+movers, portfolio, account_history, trades. Run: terminal_server.py (8080) +
+run_sync_loop.py. Honest: trades empty until account trades; acct chart grows per sync.
+
+Pending optional: visual browser QA; purge Supabase/legacy; push to origin;
+resolve paper-vs-live (7497).

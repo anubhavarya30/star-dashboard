@@ -81,6 +81,49 @@ def history(sym, rng):
     return cached(f"h:{sym}:{rng}", build)
 
 
+def ohlc(sym, rng):
+    """OHLC bars for candlestick charts (Lightweight Charts format)."""
+    period_map = {"1mo": ("1mo", "1d"), "6mo": ("6mo", "1d"),
+                  "1y": ("1y", "1d"), "5y": ("5y", "1wk")}
+    period, interval = period_map.get(rng, ("6mo", "1d"))
+
+    def build():
+        df = yf.Ticker(sym).history(period=period, interval=interval)
+        bars = []
+        for idx, row in df.iterrows():
+            o, h, l, c = num(row["Open"]), num(row["High"]), num(row["Low"]), num(row["Close"])
+            if None in (o, h, l, c):
+                continue
+            bars.append({"time": idx.strftime("%Y-%m-%d"),
+                         "open": round(o, 2), "high": round(h, 2),
+                         "low": round(l, 2), "close": round(c, 2)})
+        return {"symbol": sym.upper(), "range": rng, "bars": bars}
+    return cached(f"o:{sym}:{rng}", build)
+
+
+MAG7 = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA"]
+
+
+def mag7():
+    def build():
+        rows = []
+        for s in MAG7:
+            try:
+                q = quote(s)
+                rows.append({"symbol": s, "last": q["last"], "change_pct": q["change_pct"]})
+            except Exception:
+                rows.append({"symbol": s, "last": None, "change_pct": None})
+        return {"stocks": rows}
+    return cached("mag7", build)
+
+
+def movers():
+    def build():
+        import webull_movers
+        return webull_movers.movers(8)
+    return cached("movers", build)
+
+
 def profile(sym):
     def build():
         info = {}
@@ -192,6 +235,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(quote(sym))
             if u.path == "/api/history":
                 return self._send_json(history(sym, q.get("range", ["6mo"])[0]))
+            if u.path == "/api/ohlc":
+                return self._send_json(ohlc(sym, q.get("range", ["6mo"])[0]))
+            if u.path == "/api/mag7":
+                return self._send_json(mag7())
+            if u.path == "/api/movers":
+                return self._send_json(movers())
             if u.path == "/api/profile":
                 return self._send_json(profile(sym))
             if u.path == "/api/news":
