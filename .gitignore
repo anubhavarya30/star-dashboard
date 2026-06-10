@@ -8,3 +8,5 @@ ECC/
 ui-ux-pro-max-skill/
 _legacy/
 .claude/skills/
+orders_log.json
+pnl_calendar_sync.json
