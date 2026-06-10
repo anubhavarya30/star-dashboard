@@ -47,6 +47,13 @@ def pnl_calendar():
     return cached("pnl", lambda: {"days": db.pnl_calendar(35)}, ttl=15)
 
 
+def forensic(sym):
+    def build():
+        import forensic as fz
+        return fz.analyze(sym)
+    return cached(f"fz:{sym}", build, ttl=600)  # forensic pull is heavy; 10-min cache
+
+
 def num(x):
     try:
         f = float(x)
@@ -310,6 +317,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(agents())
             if u.path == "/api/pnl_calendar":
                 return self._send_json(pnl_calendar())
+            if u.path == "/api/forensic":
+                return self._send_json(forensic(sym))
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":

@@ -200,6 +200,28 @@
     font-size:12px;letter-spacing:1px;padding:9px 16px;border-radius:7px;cursor:pointer;transition:all var(--t)}
   .btn:hover{background:rgba(255,166,43,.24)}
 
+  /* forensic */
+  .fz-score{display:flex;align-items:center;gap:24px;padding:18px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;margin-bottom:18px;flex-wrap:wrap}
+  .gauge{width:120px;height:120px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 120px;
+    background:conic-gradient(var(--gcol) calc(var(--g)*1%),#1a2230 0)}
+  .gauge .inner{width:96px;height:96px;border-radius:50%;background:var(--panel-2);display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gauge .num{font-size:30px;font-weight:700}.gauge .of{font-size:10px;color:var(--muted)}
+  .fz-meta{flex:1;min-width:240px}
+  .fz-meta .nm{font-size:20px;font-weight:700;color:#fff}
+  .fz-rating{display:inline-block;font-size:12px;font-weight:700;letter-spacing:1px;padding:4px 12px;border-radius:6px;margin:8px 0}
+  .r-LOW{background:rgba(46,230,166,.15);color:var(--up)}.r-MODERATE{background:rgba(255,166,43,.15);color:var(--amber)}
+  .r-ELEVATED{background:rgba(255,140,60,.18);color:#ff9a4d}.r-HIGH{background:rgba(255,93,108,.18);color:var(--down)}
+  .fz-sum{color:var(--txt-2);font-family:var(--sans);font-size:13px;margin-top:6px;line-height:1.5}
+  .flag{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:12px 14px;border:1px solid var(--line-soft);border-radius:8px;margin-bottom:8px;background:var(--panel)}
+  .flag .sev{font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 8px;border-radius:5px;height:fit-content}
+  .sev-HIGH{background:rgba(255,93,108,.18);color:var(--down)}.sev-MED{background:rgba(255,166,43,.15);color:var(--amber)}.sev-LOW{background:rgba(46,230,166,.13);color:var(--up)}
+  .flag .cat{font-size:13px;font-weight:600;color:#fff}
+  .flag .ev{font-size:12px;color:var(--txt-2);font-family:var(--mono);margin:4px 0}
+  .flag .ex{font-size:12px;color:var(--muted);font-family:var(--sans)}
+  .fz-review{display:flex;gap:10px;align-items:baseline;padding:8px 14px;border-bottom:1px solid var(--line-soft);font-size:12px}
+  .fz-review .st{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--faint);flex:0 0 64px}
+  .fz-h{color:var(--amber);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:20px 0 10px}
+
   @media (max-width:1024px){ .grid{grid-template-columns:1fr} .strip{display:none} .movers{grid-template-columns:1fr} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
@@ -222,6 +244,10 @@
   <div class="navitem" data-view="pnl" tabindex="0" role="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
     <span class="lbl">P&amp;L Calendar</span><span class="hint">daily</span>
+  </div>
+  <div class="navitem" data-view="forensic" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+    <span class="lbl">Forensic Scanner</span><span class="hint">red flags</span>
   </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
@@ -342,6 +368,22 @@
         <button class="btn" onclick="syncCalendar()">⟳ Sync today's P&amp;L to Google Calendar</button>
         <span id="syncMsg" style="font-size:12px;color:var(--muted);font-family:var(--sans)"></span>
       </div>
+    </section>
+  </div>
+</div>
+
+<!-- ===== FORENSIC SCANNER VIEW ===== -->
+<div id="view-forensic" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">Forensic Analyst — Red-Flag Scan</span><span class="meta" id="fzTime"></span></div>
+      <form onsubmit="runForensic(event)" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <div class="cmd" style="flex:0 0 auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input id="fzInput" placeholder="TICKER" autocomplete="off" spellcheck="false" aria-label="Company ticker"></div>
+        <button class="btn" type="submit">Scan</button>
+        <span style="font-size:11px;color:var(--faint);font-family:var(--sans);align-self:center">e.g. NVDA, AMZN, any US ticker</span>
+      </form>
+      <div id="fzResult"><div class="empty">Enter a ticker to scan for hidden red flags.</div></div>
     </section>
   </div>
 </div>
@@ -475,6 +517,36 @@ function switchView(name){
   closeMenu();
   if(name==="agents"){loadAgents();}
   if(name==="pnl"){loadPnlCalendar();}
+  if(name==="forensic" && !fzDone){runForensicSym("NVDA");fzDone=true;}
+}
+
+/* ---------- Forensic scanner ---------- */
+let fzDone=false;
+function runForensic(e){e.preventDefault();const v=$("fzInput").value.trim().toUpperCase();if(v)runForensicSym(v);}
+async function runForensicSym(sym){
+  $("fzInput").value="";
+  $("fzResult").innerHTML='<div class="empty">Scanning '+sym+' — pulling filings, financials, insider activity…</div>';
+  let d;
+  try{d=await api(`/api/forensic?sym=${sym}`);}catch(e){$("fzResult").innerHTML='<div class="errline">Scan failed.</div>';return;}
+  if(d.error){$("fzResult").innerHTML='<div class="errline">'+d.error+'</div>';return;}
+  $("fzTime").textContent="scanned "+new Date(d.generated_at).toLocaleTimeString("en-US",{hour12:false});
+  const gcol=d.risk_score>=70?"var(--down)":d.risk_score>=45?"#ff9a4d":d.risk_score>=20?"var(--amber)":"var(--up)";
+  const flags=(d.flags||[]).filter(f=>!(f.category==="Insider Selling"&&f.severity==="LOW"));
+  const positives=(d.flags||[]).filter(f=>f.category==="Insider Selling"&&f.severity==="LOW");
+  const flagHtml=flags.length?flags.map(f=>`<div class="flag"><span class="sev sev-${f.severity}">${f.severity}</span>
+    <div><div class="cat">⚠️ ${f.category}</div><div class="ev">${f.evidence}</div><div class="ex">${f.explanation}</div></div></div>`).join("")
+    :'<div class="empty">No structured red flags detected.</div>';
+  const revHtml=(d.reviews||[]).map(r=>`<div class="fz-review"><span class="st">${r.status}</span><div><strong>${r.category}</strong><br><span style="color:var(--muted);font-family:var(--sans)">${r.note}</span></div></div>`).join("");
+  $("fzResult").innerHTML=`
+    <div class="fz-score" style="--g:${d.risk_score};--gcol:${gcol}">
+      <div class="gauge"><div class="inner"><span class="num" style="color:${gcol}">${d.risk_score}</span><span class="of">/100 RISK</span></div></div>
+      <div class="fz-meta"><div class="nm">${d.symbol} — ${d.name}</div>
+        <div class="fz-rating r-${d.rating.split(' ')[0]}">${d.rating}</div>
+        <div class="fz-sum">${d.summary}</div></div>
+    </div>
+    <div class="fz-h">Red flags found</div>${flagHtml}
+    ${positives.length?'<div class="fz-h">Positive signals</div>'+positives.map(f=>`<div class="flag"><span class="sev sev-LOW">+</span><div><div class="cat">${f.category}</div><div class="ev">${f.evidence}</div></div></div>`).join(""):""}
+    <div class="fz-h">Requires filing review (not auto-detected)</div>${revHtml}`;
 }
 document.querySelectorAll(".navitem").forEach(n=>{
   n.addEventListener("click",()=>switchView(n.dataset.view));
@@ -566,8 +638,8 @@ setInterval(freshness,1000);
 initCharts();
 loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
 // deep-link: #agents / #pnl open that view directly
-{const h=(location.hash||"").replace("#","");if(h==="agents"||h==="pnl")switchView(h);}
-window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl"].includes(h))switchView(h);});
+{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic"].includes(h))switchView(h);}
+window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic"].includes(h))switchView(h);});
 setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();},30000);
 </script>
 </body>
