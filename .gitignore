@@ -6,3 +6,5 @@ _archive_fake/
 *.log
 ECC/
 ui-ux-pro-max-skill/
+_legacy/
+.claude/skills/
