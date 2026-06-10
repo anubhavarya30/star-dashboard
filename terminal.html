@@ -219,6 +219,21 @@
       <tbody id="pf"></tbody>
     </table>
   </aside>
+
+  <!-- account value history -->
+  <section class="panel">
+    <div class="ph"><span class="accent">Account Value</span><span class="meta">net liq · 30d</span></div>
+    <div class="chart-wrap" style="height:200px"><canvas id="acctChart" aria-label="Account value history"></canvas></div>
+  </section>
+
+  <!-- trade history -->
+  <aside class="panel">
+    <div class="ph"><span class="accent">Trade History</span><span class="meta">real fills</span></div>
+    <table>
+      <thead><tr><th>Time</th><th>Sym</th><th>Side</th><th>Qty</th><th>Price</th><th>P&amp;L</th></tr></thead>
+      <tbody id="trades"></tbody>
+    </table>
+  </aside>
 </main>
 
 <footer class="foot">
@@ -304,6 +319,33 @@ async function loadPortfolio(){
   $("pf").innerHTML=pos.length?pos.map(p=>{const c=cls(p.unrealized_pnl);
     return `<tr><td class="sym">${p.symbol}</td><td>${p.quantity}</td><td>${fmtN(p.avg_cost)}</td><td>${fmtN(p.market_price)}</td><td>${fmtN(p.market_value)}</td><td class="${c}">${p.unrealized_pnl>=0?"+":""}${fmtN(p.unrealized_pnl)}</td></tr>`;}).join(""):'<tr><td colspan="6" class="empty">No open positions</td></tr>';
 }
+let acctChart;
+async function loadAccountHistory(){
+  const d=await api(`/api/account_history?days=30`), h=d.history||[];
+  if(!h.length){return;}
+  const labels=h.map(r=>(r.ts||"").slice(5,16).replace("T"," ")), data=h.map(r=>r.net_liquidation);
+  const amber=getCss("--amber");
+  if(acctChart)acctChart.destroy();
+  acctChart=new Chart($("acctChart"),{type:"line",
+    data:{labels,datasets:[{data,borderColor:amber,borderWidth:1.6,pointRadius:data.length<2?3:0,
+      pointHoverRadius:4,pointBackgroundColor:amber,fill:true,tension:.04,
+      backgroundColor:c=>{const g=c.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,amber+"33");g.addColorStop(1,amber+"00");return g;}}]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:"#0a0e16",borderColor:"#1a2230",borderWidth:1,
+        titleColor:"#69768a",bodyColor:"#e8edf4",padding:9,displayColors:false,titleFont:{family:"IBM Plex Mono",size:10},
+        bodyFont:{family:"IBM Plex Mono",size:12,weight:"600"},callbacks:{label:c=>"$"+fmtN(c.parsed.y)}}},
+      scales:{x:{ticks:{color:"#69768a",maxTicksLimit:6,font:{family:"IBM Plex Mono",size:9},maxRotation:0},grid:{display:false},border:{color:"#1a2230"}},
+        y:{position:"right",ticks:{color:"#69768a",font:{family:"IBM Plex Mono",size:9},callback:v=>"$"+v.toFixed(0)},grid:{color:"#11161f"},border:{display:false}}}}});
+}
+async function loadTrades(){
+  const d=await api(`/api/trades`), t=d.trades||[];
+  $("trades").innerHTML=t.length?t.map(r=>{const buy=(r.side||"").toUpperCase().startsWith("B");
+    const c=cls(r.realized_pnl);
+    return `<tr><td style="text-align:left;color:var(--muted);font-size:11px">${(r.ts||"").slice(0,16).replace("T"," ")}</td>
+      <td class="sym">${r.symbol}</td><td class="${buy?'up':'down'}">${buy?'BUY':'SELL'}</td><td>${fmtN(r.shares,0)}</td>
+      <td>${fmtN(r.price)}</td><td class="${c}">${r.realized_pnl?(r.realized_pnl>=0?'+':'')+fmtN(r.realized_pnl):'—'}</td></tr>`;}).join("")
+    :'<tr><td colspan="6" class="empty">No trades recorded yet — real fills appear here as STAR trades the account.</td></tr>';
+}
 function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 function loadAll(){loadQuote();loadStats();loadChart();loadNews();}
 
@@ -311,8 +353,8 @@ $("ranges").addEventListener("click",e=>{if(e.target.dataset.r){RANGE=e.target.d
   [...$("ranges").children].forEach(b=>{const a=b===e.target;b.classList.toggle("active",a);b.setAttribute("aria-selected",a);});loadChart();}});
 function tick(){$("clock").textContent=new Date().toLocaleTimeString("en-US",{hour12:false})+" ET";}
 setInterval(tick,1000);tick();
-loadAll();loadStrip();loadPortfolio();
-setInterval(()=>{loadQuote();loadStrip();loadPortfolio();},30000);
+loadAll();loadStrip();loadPortfolio();loadAccountHistory();loadTrades();
+setInterval(()=>{loadQuote();loadStrip();loadPortfolio();loadAccountHistory();loadTrades();},30000);
 </script>
 </body>
 </html>

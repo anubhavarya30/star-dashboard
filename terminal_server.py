@@ -16,6 +16,7 @@ from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 
 import yfinance as yf
+import db
 
 HERE = Path(__file__).parent
 PORT = 8080
@@ -199,12 +200,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(market_overview())
             if u.path == "/api/portfolio":
                 return self._send_json(portfolio())
+            if u.path == "/api/trades":
+                return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
+            if u.path == "/api/account_history":
+                return self._send_json({"history": db.account_history(int(q.get("days", ["30"])[0]))})
             self.send_error(404)
         except Exception as e:
             self._send_json({"error": f"{type(e).__name__}: {e}"}, code=500)
 
 
 if __name__ == "__main__":
+    db.init_db()
     print(f"🖥️  STAR Terminal running → http://localhost:{PORT}")
-    print("   Data: yfinance (real, ~15min delayed) + IBKR portfolio")
+    print("   Data: yfinance (real, ~15min delayed) + IBKR portfolio + SQLite history")
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

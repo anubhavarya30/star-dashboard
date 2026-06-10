@@ -59,7 +59,8 @@ confirm this (done). Optional cleanup pending (uninstall pkg + archive legacy sc
 | `dashboard.html` | Simple clean single-page account monitor (port 9000). |
 | **`terminal_server.py`** | **Bloomberg-style terminal backend (port 8080).** stdlib http.server + yfinance. Endpoints: `/api/quote`, `/api/history`, `/api/profile`, `/api/news`, `/api/market`, `/api/portfolio`. 20s TTL cache. |
 | **`terminal.html`** | **Bloomberg-style terminal UI** — amber/black monospace, ticker command bar, live index strip, quote header, Chart.js price chart with 1M/6M/1Y/5Y, key-stats grid, company profile, news, and a real IBKR portfolio panel. |
-| `star_trading.db` | SQLite; account row updated to REAL values (was fake $100k). |
+| **`db.py`** | **SQLite history layer.** Tables: `account_snapshots`, `position_snapshots`, `executions` (real fills, dedup by exec_id). API: record_snapshot (throttled 5min), record_executions, account_history(), trades(), position_history(). |
+| `star_trading.db` | SQLite; now holds the history tables above + legacy `accounts` row. |
 | `google_calendar_mcp.py` | P&L→Google Calendar sync (only real closed trades; currently 0). Not central. |
 
 Archived/contradicting fake files moved to `_archive_fake/` (gitignored):
@@ -89,14 +90,18 @@ profile, 8 news headlines, IBKR portfolio).
 
 ## ▶️ NEXT STEP (resume here)
 
-**DONE this session:** `terminal.html` was professionally redesigned via the
-ui-ux-pro-max skill — IBM Plex Mono/Sans, OLED-deep dark, amber/green/red
-semantics, SVG icons (no emoji), skeleton loaders, focus rings, reduced-motion,
-refined Chart.js styling. Data layer unchanged (terminal_server.py endpoints).
+**DONE this session:**
+1. Redesigned `terminal.html` via ui-ux-pro-max (IBM Plex, OLED dark, SVG icons,
+   skeletons, focus rings, reduced-motion, refined Chart.js).
+2. Added **SQLite history layer** (`db.py`): every sync records a throttled
+   account+position snapshot; real IBKR fills captured into `executions` (dedup).
+   New endpoints `/api/account_history` and `/api/trades`. Dashboard now has an
+   **Account Value** history chart + **Trade History** table.
 
-If iterating further: only touch UI in terminal.html; keep endpoints intact;
-keep data honest (delayed labels, no fabricated entry times).
+Honest state: executions table is empty until the account actually trades
+(IBKR only returns current-session fills; the pre-existing AMZN has no fill). The
+account-value chart grows one point per sync (throttled to 5 min).
 
-Pending optional asks (only if user requests): screenshot/visual QA in a
-browser; purge Supabase pkg + legacy scripts; push to origin; resolve
-paper-vs-live (7497) question.
+If iterating: UI only in terminal.html; keep endpoints + db.py contract intact;
+keep data honest. Pending optional: visual browser QA; purge Supabase/legacy;
+push to origin; resolve paper-vs-live (7497).

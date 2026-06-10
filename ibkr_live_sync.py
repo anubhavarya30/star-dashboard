@@ -69,6 +69,26 @@ def fetch():
             "entry_time": None,
         })
 
+    # --- real executions/fills (this session/day only; dedup by execId downstream) ---
+    executions = []
+    try:
+        for f in ib.fills():
+            ex = f.execution
+            cr = getattr(f, "commissionReport", None)
+            executions.append({
+                "exec_id": ex.execId,
+                "ts": str(ex.time),
+                "account_id": ex.acctNumber or account_id,
+                "symbol": f.contract.symbol,
+                "side": ex.side,                       # BOT / SLD
+                "shares": float(ex.shares),
+                "price": float(ex.price),
+                "commission": float(getattr(cr, "commission", 0) or 0),
+                "realized_pnl": float(getattr(cr, "realizedPNL", 0) or 0),
+            })
+    except Exception:
+        pass
+
     ib.disconnect()
 
     return {
@@ -82,6 +102,7 @@ def fetch():
         "unrealized_pnl": summary.get("UnrealizedPnL"),
         "realized_pnl": summary.get("RealizedPnL"),
         "positions": positions,
+        "executions": executions,
         "price_source": "IBKR delayed (no real-time subscription)",
     }
 
@@ -90,6 +111,18 @@ def main():
     try:
         payload = fetch()
         write(payload)
+        # persist to SQLite history (throttled snapshot + dedup'd executions)
+        try:
+            import db
+            db.init_db()
+            saved = db.record_snapshot(payload)
+            n_exec = db.record_executions(payload.get("executions", []))
+            if saved:
+                print("   📀 snapshot saved to history")
+            if n_exec:
+                print(f"   📀 {n_exec} new execution(s) recorded")
+        except Exception as de:
+            print(f"   ⚠ history write skipped: {type(de).__name__}: {de}")
         print(f"✅ Synced real IBKR account {payload['account_id']}")
         print(f"   Net Liquidation: ${payload['net_liquidation']:,.2f}")
         print(f"   Cash: ${payload['cash']:,.2f}   Buying Power: ${payload['buying_power']:,.2f}")
