@@ -15,3 +15,4 @@ star_trading.db
 current_trades.json
 did.bin
 .claude/settings.local.json
+real_market_data.json
