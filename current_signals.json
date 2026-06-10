@@ -1,0 +1,12 @@
+[
+  {
+    "symbol": "AAPL",
+    "action": "BUY",
+    "confidence": 0.85,
+    "entry_price": 312.29,
+    "stop_loss": 308.86,
+    "take_profit": 319.95,
+    "reason": "Volume-Weighted RSI signal (TEST)",
+    "timestamp": "2026-06-05T11:47:48.536770"
+  }
+]

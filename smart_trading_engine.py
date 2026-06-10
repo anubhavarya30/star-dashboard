@@ -120,10 +120,10 @@ class SmartTradingEngine:
         Run one complete trading cycle
 
         Args:
-            symbols: List of symbols to analyze. Default: XAUUSD, AAPL, NVDA, TSLA, SPY
+            symbols: List of symbols to analyze. Default: GC=F, AAPL, NVDA, TSLA, SPY
         """
         if symbols is None:
-            symbols = ["XAUUSD", "AAPL", "NVDA", "TSLA", "SPY"]
+            symbols = ["GC=F", "AAPL", "NVDA", "TSLA", "SPY"]
 
         print(f"\n{'='*70}")
         print(f"🔄 Trading Cycle Start - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -236,7 +236,7 @@ def main():
     # Backtest first
     print("\n🔬 BACKTESTING STRATEGY")
     print("="*70)
-    backtest_result = engine.backtest_strategy("XAUUSD", "1y")
+    backtest_result = engine.backtest_strategy("GC=F", "1y")
     print(f"Backtest Results:")
     print(f"  Total Trades: {backtest_result.get('total_trades', 0)}")
     print(f"  Win Rate: {backtest_result.get('win_rate_pct', 0):.1f}%")

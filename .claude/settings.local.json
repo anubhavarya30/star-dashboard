@@ -8,7 +8,19 @@
       "Bash(python3 *)",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "Bash(grep -E \"\\\\.\\(py|md\\)$\")"
+      "Bash(grep -E \"\\\\.\\(py|md\\)$\")",
+      "Bash(pkill -f streamlit)",
+      "Bash(open dashboard_professional.html)",
+      "Bash(open \"http://localhost:9000/dashboard_professional.html\")",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat: Add trading history, entry/exit times, and Google Calendar MCP integration *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git merge *)",
+      "Bash(git commit *)",
+      "Bash(awk '{print \"   \" $2 \" - \" $NF}')"
     ]
   }
 }

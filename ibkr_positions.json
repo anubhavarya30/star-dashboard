@@ -1,0 +1,12 @@
+{
+  "AMZN": {
+    "symbol": "AMZN",
+    "quantity": 2,
+    "avg_cost": 247.7288,
+    "contract": {
+      "secType": "STK",
+      "exchange": "NASDAQ",
+      "currency": "USD"
+    }
+  }
+}
