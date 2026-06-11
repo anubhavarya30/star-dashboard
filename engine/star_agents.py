@@ -29,7 +29,8 @@ def _series(ohlcv):
 
 def analyze_symbol(symbol, account_size=485.0, risk_pct=0.02):
     """Run all agents on one symbol and let STAR decide. Returns a dict."""
-    ohlcv = MDP.get_ohlcv_dict(symbol, period="6mo", interval="1d")
+    # VW-RSI needs 200 bars (volume_period=200); fetch ~1y of daily data
+    ohlcv = MDP.get_ohlcv_dict(symbol, period="1y", interval="1d")
     if not ohlcv or len(ohlcv.get("close", [])) < 30:
         return {"symbol": symbol, "error": "insufficient data", "agents": [], "star": None}
 

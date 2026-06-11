@@ -170,18 +170,38 @@ def pnl_calendar(days: int = 35):
     by = {r["d"]: {"date": r["d"], "realized": round(r["r"], 2),
                    "unrealized": 0.0, "trades": r["n"]} for r in rows}
 
-    # today's live unrealized from open positions
     today = datetime.now().astimezone().date().isoformat()
+
+    # historical per-day unrealized mark: sum the LAST snapshot of each day
+    with _conn() as c:
+        snaps = c.execute(
+            "SELECT d, SUM(unrealized_pnl) u FROM ("
+            "  SELECT date(ts) d, ts, unrealized_pnl,"
+            "         RANK() OVER (PARTITION BY date(ts) ORDER BY ts DESC) rk"
+            "  FROM position_snapshots WHERE ts >= date('now', ?)"
+            ") WHERE rk = 1 GROUP BY d",
+            (f"-{int(days)} days",),
+        ).fetchall()
+    for s in snaps:
+        if s["d"] == today:
+            continue  # today uses the live value below, not a stale snapshot
+        e = by.get(s["d"], {"date": s["d"], "realized": 0.0, "unrealized": 0.0, "trades": 0})
+        e["unrealized"] = round(s["u"] or 0.0, 2)
+        by[s["d"]] = e
+
+    # today's LIVE unrealized from open positions (fresher than any snapshot)
     unreal = 0.0
+    connected = False
     lf = DB_PATH.parent / "live_account.json"
     if lf.exists():
         try:
             d = json.loads(lf.read_text())
             if d.get("status") == "connected":
+                connected = True
                 unreal = sum((p.get("unrealized_pnl") or 0) for p in d.get("positions", []))
         except Exception:
             pass
-    if unreal or today in by:
+    if connected and (unreal or today in by):
         e = by.get(today, {"date": today, "realized": 0.0, "unrealized": 0.0, "trades": 0})
         e["unrealized"] = round(unreal, 2)
         by[today] = e
