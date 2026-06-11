@@ -54,6 +54,20 @@ def forensic(sym):
     return cached(f"fz:{sym}", build, ttl=600)  # forensic pull is heavy; 10-min cache
 
 
+def runners():
+    def build():
+        import runner_scanner
+        acct = 100.0
+        try:
+            d = json.loads((HERE / "live_account.json").read_text())
+            if d.get("status") == "connected" and d.get("net_liquidation"):
+                acct = d["net_liquidation"]
+        except Exception:
+            pass
+        return runner_scanner.scan(account_size=acct, max_names=10)
+    return cached("runners", build, ttl=600)  # heavy (yfinance per name); 10-min cache
+
+
 def num(x):
     try:
         f = float(x)
@@ -319,6 +333,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(pnl_calendar())
             if u.path == "/api/forensic":
                 return self._send_json(forensic(sym))
+            if u.path == "/api/runners":
+                return self._send_json(runners())
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":

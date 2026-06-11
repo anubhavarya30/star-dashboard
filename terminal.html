@@ -222,6 +222,32 @@
   .fz-review .st{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--faint);flex:0 0 64px}
   .fz-h{color:var(--amber);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:20px 0 10px}
 
+  /* runner scanner */
+  .run-warn{background:rgba(255,93,108,.08);border:1px solid rgba(255,93,108,.25);color:#ffb4bb;
+    font-family:var(--sans);font-size:12px;line-height:1.5;padding:10px 14px;border-radius:8px;margin-bottom:16px}
+  .rcard{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .rcard .top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line-soft)}
+  .rcard .rk{font-size:11px;color:var(--faint);font-weight:700;margin-right:8px}
+  .rcard .sy{font-size:17px;font-weight:700;color:#fff}
+  .rcard .nm{font-size:10px;color:var(--muted);font-family:var(--sans);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rscore{display:flex;align-items:baseline;gap:4px}
+  .rscore .v{font-size:22px;font-weight:700}.rscore .l{font-size:9px;color:var(--muted)}
+  .rstats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-soft)}
+  .rstat{background:var(--panel-2);padding:8px 12px}
+  .rstat .k{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .rstat .v{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+  .rvbar{height:4px;background:#11161f;border-radius:2px;overflow:hidden;margin:0 14px 12px}
+  .rvbar i{display:block;height:100%;background:linear-gradient(90deg,var(--amber-dim),var(--amber))}
+  .rflags{padding:10px 14px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line-soft)}
+  .rflag{display:flex;gap:8px;align-items:flex-start;font-size:11px;font-family:var(--sans);line-height:1.4}
+  .rflag svg{width:13px;height:13px;flex:0 0 13px;margin-top:1px}
+  .rflag.high{color:#ff8b96}.rflag.med{color:var(--amber)}.rflag.info{color:var(--blue)}
+  .rsetup{padding:10px 14px;border-top:1px solid var(--line-soft);background:rgba(255,166,43,.04)}
+  .rsetup .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+  .rsetup .sg div .k{font-size:9px;color:var(--muted);text-transform:uppercase}
+  .rsetup .sg div .v{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+  .rsetup .nt{font-size:10px;color:var(--faint);font-family:var(--sans);margin-top:7px}
+
   @media (max-width:1024px){ .grid{grid-template-columns:1fr} .strip{display:none} .movers{grid-template-columns:1fr} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
@@ -248,6 +274,10 @@
   <div class="navitem" data-view="forensic" tabindex="0" role="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
     <span class="lbl">Forensic Scanner</span><span class="hint">red flags</span>
+  </div>
+  <div class="navitem" data-view="runners" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14l6-6 4 4 6-8"/><path d="M14 4h6v6"/></svg>
+    <span class="lbl">Runner Scanner</span><span class="hint">small-caps</span>
   </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
@@ -388,6 +418,17 @@
   </div>
 </div>
 
+<!-- ===== RUNNER SCANNER VIEW ===== -->
+<div id="view-runners" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">Runner Scanner — Low-Float Small-Cap Movers</span><span class="meta" id="runTime"></span></div>
+      <div class="run-warn">Research watchlist · delayed data · these are the market's most volatile, most-manipulated names. Ranked by runner potential; risk flags shown separately. Do your DD — this is not auto-buy.</div>
+      <div id="runGrid" class="agents-grid"><div class="empty">Scanning today's movers…</div></div>
+    </section>
+  </div>
+</div>
+
 <footer class="foot">
   <b>Charts:</b> TradingView Lightweight Charts &nbsp;·&nbsp; <b>Quotes/Fundamentals:</b> yfinance (~15-min delayed) &nbsp;·&nbsp; <b>Movers:</b> Webull public data &nbsp;·&nbsp; <b>Portfolio:</b> live IBKR TWS &nbsp;·&nbsp; research terminal — not order routing.
 </footer>
@@ -518,6 +559,45 @@ function switchView(name){
   if(name==="agents"){loadAgents();}
   if(name==="pnl"){loadPnlCalendar();}
   if(name==="forensic" && !fzDone){runForensicSym("NVDA");fzDone=true;}
+  if(name==="runners"){loadRunners();}
+}
+
+/* ---------- Runner Scanner ---------- */
+const WARN={high:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  med:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>'};
+const big=n=>{if(n==null||isNaN(n))return"—";const a=Math.abs(n);if(a>=1e9)return(n/1e9).toFixed(1)+"B";if(a>=1e6)return(n/1e6).toFixed(1)+"M";if(a>=1e3)return(n/1e3).toFixed(0)+"K";return ""+Math.round(n);};
+async function loadRunners(){
+  let d;try{d=await api(`/api/runners`);}catch(e){$("runGrid").innerHTML='<div class="errline">Scan failed.</div>';return;}
+  $("runTime").textContent="updated "+(d.generated_at?new Date(d.generated_at).toLocaleTimeString("en-US",{hour12:false}):"")+" · acct $"+fmtN(d.account_size||100);
+  const maxRV=Math.max(1,...(d.candidates||[]).map(c=>c.rel_volume||0));
+  const cards=(d.candidates||[]).map((c,i)=>{
+    const sc=c.runner_score, scol=sc>=80?"var(--up)":sc>=50?"var(--amber)":"var(--muted)";
+    const rbadge=`<span class="badge ${c.risk==='HIGH'?'SELL':c.risk==='MED'?'HOLD':'BUY'}">${c.risk} RISK</span>`;
+    const flags=(c.flags||[]).map(([lvl,msg])=>`<div class="rflag ${lvl}">${WARN[lvl]||WARN.info}<span>${msg}</span></div>`).join("");
+    const s=c.setup;
+    const setup=s?`<div class="rsetup"><div class="k" style="font-size:9px;color:var(--amber);letter-spacing:1px">SETUP (template · ${c.suggested_qty||0} sh @ ~2% acct risk)</div>
+      <div class="sg"><div><div class="k">Entry</div><div class="v" style="font-size:10px">${s.entry}</div></div>
+      <div><div class="k">Stop</div><div class="v down">$${s.stop}</div></div>
+      <div><div class="k">Target</div><div class="v up">$${s.target}</div></div>
+      <div><div class="k">R:R</div><div class="v">${s.rr}</div></div></div>
+      <div class="nt">${s.note}</div></div>`:"";
+    return `<div class="rcard">
+      <div class="top"><span><span class="rk">#${i+1}</span><span class="sy">${c.symbol}</span><div class="nm">${c.name||""}</div></span>
+        <span style="text-align:right"><div class="rscore"><span class="v" style="color:${scol}">${sc}</span><span class="l">/100</span></div>${rbadge}</span></div>
+      <div class="rstats">
+        <div class="rstat"><div class="k">Price</div><div class="v">$${fmtN(c.price)}</div></div>
+        <div class="rstat"><div class="k">Change</div><div class="v ${cls(c.change_pct)}">${pct(c.change_pct)}</div></div>
+        <div class="rstat"><div class="k">Rel Vol</div><div class="v">${c.rel_volume?c.rel_volume+"x":"—"}</div></div>
+        <div class="rstat"><div class="k">Float</div><div class="v">${c.float?big(c.float):"—"}</div></div>
+        <div class="rstat"><div class="k">Mkt Cap</div><div class="v">$${big(c.market_cap)}</div></div>
+        <div class="rstat"><div class="k">Catalysts</div><div class="v">${c.news_count!=null?c.news_count+" news":"—"}</div></div>
+      </div>
+      <div class="rvbar"><i style="width:${Math.min((c.rel_volume||0)/maxRV*100,100)}%"></i></div>
+      <div class="rflags">${flags||'<span class="empty">No flags.</span>'}</div>
+      ${setup}</div>`;
+  }).join("");
+  $("runGrid").innerHTML=cards||'<div class="empty">No movers found.</div>';
 }
 
 /* ---------- Forensic scanner ---------- */
@@ -638,8 +718,8 @@ setInterval(freshness,1000);
 initCharts();
 loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
 // deep-link: #agents / #pnl open that view directly
-{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic"].includes(h))switchView(h);}
-window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic"].includes(h))switchView(h);});
+{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners"].includes(h))switchView(h);}
+window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners"].includes(h))switchView(h);});
 setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();},30000);
 </script>
 </body>
