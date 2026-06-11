@@ -100,22 +100,38 @@ def analyze_symbol(symbol, account_size=485.0, risk_pct=0.02):
         "detail": f"{n} recent headlines" if n is not None else "headlines unavailable",
     })
 
-    # --- STAR (CEO): aggregate directional votes weighted by confidence ---
-    score, wsum = 0.0, 0.0
+    # --- STAR (CEO): CALIBRATED consensus ----------------------------------
+    # Only Technical/Trend/Momentum cast directional votes (Risk/News are INFO).
+    # A VW-RSI "SELL" is an EXIT/overbought signal, not a short-entry — it is
+    # HALF-weighted toward bearish. Score is divided by the FULL count of
+    # directional agents, so a single lone voter cannot produce false 100%
+    # conviction; abstaining (HOLD) agents drag the result toward neutral.
+    DIRECTIONAL = ("Technical (VW-RSI)", "Trend (EMA/MACD)", "Momentum (RSI/Vol)")
+    score = 0.0
+    bull = bear = 0
+    exit_flag = False
     for a in agents:
-        if a["vote"] in ("BUY", "SELL") and a["confidence"]:
-            s = a["confidence"] if a["vote"] == "BUY" else -a["confidence"]
-            score += s
-            wsum += a["confidence"]
-    net = score / wsum if wsum else 0  # -1..+1
-    if net > 0.33:
-        decision, conf = "BUY", min(abs(net), 1)
-    elif net < -0.33:
-        decision, conf = "SELL", min(abs(net), 1)
+        if a["agent"] not in DIRECTIONAL:
+            continue
+        cf = a.get("confidence") or 0
+        if a["vote"] == "BUY":
+            score += cf; bull += 1
+        elif a["vote"] == "SELL":
+            is_exit = str(a.get("detail", "")).strip().lower().startswith("exit")
+            if a["agent"].startswith("Technical") and is_exit:
+                score -= cf * 0.5; exit_flag = True   # exit signal, half weight
+            else:
+                score -= cf
+            bear += 1
+    net = round(score / len(DIRECTIONAL), 3)  # -1..+1
+    if net > 0.25:
+        decision, conf = "BUY", round(min(net, 1), 2)
+    elif net < -0.25:
+        decision, conf = "SELL", round(min(-net, 1), 2)
     else:
-        decision, conf = "HOLD", 1 - abs(net)
-    reason = "; ".join(f"{a['agent'].split(' ')[0]}:{a['vote']}"
-                       for a in agents if a["vote"] in ("BUY", "SELL", "HOLD"))
+        decision, conf = "HOLD", round(1 - min(abs(net) / 0.25, 1) * 0.4, 2)
+    reason = (f"{bull} bullish / {bear} bearish of {len(DIRECTIONAL)} agents; net {net:+.2f}"
+              + ("; VW-RSI exit-signal half-weighted" if exit_flag else ""))
 
     return {
         "symbol": symbol, "price": round(price, 2), "rsi": round(rsi, 1),
