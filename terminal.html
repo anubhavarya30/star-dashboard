@@ -229,6 +229,19 @@
   .rcard .top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line-soft)}
   .rcard .rk{font-size:11px;color:var(--faint);font-weight:700;margin-right:8px}
   .rcard .sy{font-size:17px;font-weight:700;color:#fff}
+  .rcard .sy.rsymlink{cursor:pointer;border-bottom:1px dashed rgba(255,166,43,.5);transition:color .12s}
+  .rcard .sy.rsymlink:hover{color:var(--amber)}
+  .symwrap{position:relative;display:inline-block}
+  .sympop{position:absolute;top:100%;left:0;margin-top:6px;z-index:30;display:none;flex-direction:column;gap:4px;
+    background:#0d131d;border:1px solid var(--line);border-radius:7px;padding:7px 10px;
+    box-shadow:0 8px 22px rgba(0,0,0,.55);font-family:var(--sans);white-space:nowrap}
+  .symwrap:hover .sympop{display:flex}
+  .sympop a{font-size:11px;color:var(--blue);text-decoration:none}
+  .sympop a:hover{color:var(--amber)}
+  .rsrc{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 14px;border-top:1px solid var(--line-soft);font-family:var(--sans)}
+  .rsrc .k{font-size:9px;color:var(--faint);letter-spacing:1px}
+  .rsrc a{font-size:11px;color:var(--blue);text-decoration:none;border-bottom:1px solid transparent}
+  .rsrc a:hover{border-bottom-color:var(--blue)}
   .rcard .nm{font-size:10px;color:var(--muted);font-family:var(--sans);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rscore{display:flex;align-items:baseline;gap:4px}
   .rscore .v{font-size:22px;font-weight:700}.rscore .l{font-size:9px;color:var(--muted)}
@@ -543,7 +556,7 @@ async function loadTrades(){
 function select(sym){CUR=sym.toUpperCase();loadAll();loadMag7();}
 function go(e){e.preventDefault();const v=$("symInput").value.trim().toUpperCase();if(v){$("symInput").value="";select(v);}}
 $("ranges").addEventListener("click",e=>{if(e.target.dataset.r){RANGE=e.target.dataset.r;[...$("ranges").children].forEach(b=>{const a=b===e.target;b.classList.toggle("active",a);b.setAttribute("aria-selected",a);});loadChart();}});
-document.addEventListener("click",e=>{const el=e.target.closest("[data-sym]");if(el)select(el.dataset.sym);});
+document.addEventListener("click",e=>{const el=e.target.closest("[data-sym]");if(el){select(el.dataset.sym);const av=el.closest(".view.active");if(av&&av.id!=="view-research")switchView("research");}});
 document.addEventListener("keydown",e=>{if(e.key==="Enter"){const el=e.target.closest(".pick[data-sym]");if(el)select(el.dataset.sym);}});
 
 function loadAll(){loadQuote();loadStats();loadChart(true);loadNews();}
@@ -583,7 +596,7 @@ async function loadRunners(){
       <div><div class="k">R:R</div><div class="v">${s.rr}</div></div></div>
       <div class="nt">${s.note}</div></div>`:"";
     return `<div class="rcard">
-      <div class="top"><span><span class="rk">#${i+1}</span><span class="sy">${c.symbol}</span><div class="nm">${c.name||""}</div></span>
+      <div class="top"><span><span class="rk">#${i+1}</span><span class="symwrap"><span class="sy rsymlink" data-sym="${c.symbol}" title="Click: open ${c.symbol} detail view · hover: external sources">${c.symbol}</span><span class="sympop"><a href="https://finviz.com/quote.ashx?t=${c.symbol}" target="_blank" rel="noopener">Finviz ↗</a><a href="https://stockanalysis.com/stocks/${c.symbol}/" target="_blank" rel="noopener">StockAnalysis ↗</a></span></span><div class="nm">${c.name||""}</div></span>
         <span style="text-align:right"><div class="rscore"><span class="v" style="color:${scol}">${sc}</span><span class="l">/100</span></div>${rbadge}</span></div>
       <div class="rstats">
         <div class="rstat"><div class="k">Price</div><div class="v">$${fmtN(c.price)}</div></div>
@@ -594,6 +607,11 @@ async function loadRunners(){
         <div class="rstat"><div class="k">Catalysts</div><div class="v">${c.news_count!=null?c.news_count+" news":"—"}</div></div>
       </div>
       <div class="rvbar"><i style="width:${Math.min((c.rel_volume||0)/maxRV*100,100)}%"></i></div>
+      <div class="rsrc"><span class="k">SOURCE</span>
+        <a href="https://finance.yahoo.com/quote/${c.symbol}" target="_blank" rel="noopener">Yahoo Finance ↗</a>
+        <a href="https://finviz.com/quote.ashx?t=${c.symbol}" target="_blank" rel="noopener">Finviz ↗</a>
+        <a href="https://stockanalysis.com/stocks/${c.symbol}/" target="_blank" rel="noopener">StockAnalysis ↗</a>
+        <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&ticker=${c.symbol}&type=&dateb=&owner=include&count=40" target="_blank" rel="noopener">SEC filings ↗</a></div>
       <div class="rflags">${flags||'<span class="empty">No flags.</span>'}</div>
       ${setup}</div>`;
   }).join("");
