@@ -261,6 +261,22 @@
   .rsetup .sg div .v{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
   .rsetup .nt{font-size:10px;color:var(--faint);font-family:var(--sans);margin-top:7px}
 
+  /* backtest */
+  .btverdict{display:flex;align-items:center;gap:16px;padding:14px 16px;border-radius:9px;margin-bottom:14px;border:1px solid var(--line)}
+  .btverdict .big{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .btverdict .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .btverdict .tag{font-family:var(--sans);font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px}
+  .btmetrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:8px;overflow:hidden;margin-bottom:16px}
+  .btm{background:var(--panel-2);padding:10px 13px}
+  .btm .k{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .btm .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:3px}
+  .bth{font-size:11px;color:var(--amber);letter-spacing:1px;text-transform:uppercase;margin:14px 0 8px}
+  .bttbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  .bttbl th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;text-align:right;padding:6px 10px;border-bottom:1px solid var(--line)}
+  .bttbl th:first-child,.bttbl td:first-child{text-align:left}
+  .bttbl td{font-size:12px;padding:6px 10px;border-bottom:1px solid var(--line-soft)}
+  .bttbl .reason{font-family:var(--sans);font-size:10px;color:var(--muted)}
+
   @media (max-width:1024px){ .grid{grid-template-columns:1fr} .strip{display:none} .movers{grid-template-columns:1fr} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
@@ -291,6 +307,10 @@
   <div class="navitem" data-view="runners" tabindex="0" role="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14l6-6 4 4 6-8"/><path d="M14 4h6v6"/></svg>
     <span class="lbl">Runner Scanner</span><span class="hint">small-caps</span>
+  </div>
+  <div class="navitem" data-view="backtest" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-7"/></svg>
+    <span class="lbl">Backtest</span><span class="hint">prove the edge</span>
   </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
@@ -438,6 +458,25 @@
       <div class="ph"><span class="accent">Runner Scanner — Low-Float Small-Cap Movers</span><span class="meta" id="runTime"></span></div>
       <div class="run-warn">Research watchlist · delayed data · these are the market's most volatile, most-manipulated names. Ranked by runner potential; risk flags shown separately. Do your DD — this is not auto-buy.</div>
       <div id="runGrid" class="agents-grid"><div class="empty">Scanning today's movers…</div></div>
+    </section>
+  </div>
+</div>
+
+<!-- ===== BACKTEST VIEW ===== -->
+<div id="view-backtest" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">Backtest — Prove the Signal Before Risking Money</span><span class="meta" id="btTime"></span></div>
+      <div class="run-warn" style="background:rgba(255,166,43,.08);border-color:rgba(255,166,43,.25);color:#ffd9a0">
+        VW-RSI strategy tested on real historical daily data. <b>No look-ahead</b> (entries fill next bar's open), intrabar stop/target, commission + slippage applied. A signal only earns the right to trade live once it shows a positive edge here.</div>
+      <form onsubmit="runBacktest(event)" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div class="cmd" style="flex:0 0 auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input id="btInput" placeholder="TICKER" autocomplete="off" spellcheck="false" aria-label="Backtest ticker"></div>
+        <select id="btPeriod" class="btn" style="cursor:pointer"><option value="1y">1Y</option><option value="2y" selected>2Y</option><option value="5y">5Y</option><option value="10y">10Y</option><option value="max">Max</option></select>
+        <button class="btn" type="submit">Run backtest</button>
+        <span style="font-size:11px;color:var(--faint);font-family:var(--sans)">e.g. AMZN, NVDA, TSLA — any US ticker</span>
+      </form>
+      <div id="btResult"><div class="empty">Enter a ticker to backtest the VW-RSI strategy on real history.</div></div>
     </section>
   </div>
 </div>
@@ -618,6 +657,48 @@ async function loadRunners(){
   $("runGrid").innerHTML=cards||'<div class="empty">No movers found.</div>';
 }
 
+/* ---------- Backtest ---------- */
+function runBacktest(e){e.preventDefault();const v=$("btInput").value.trim().toUpperCase();const p=$("btPeriod").value;if(v)runBacktestSym(v,p);}
+async function runBacktestSym(sym,period){
+  $("btResult").innerHTML='<div class="empty">Backtesting '+sym+' on '+period+' of real data — this can take a few seconds…</div>';
+  let d;try{d=await api(`/api/backtest?sym=${sym}&period=${period}`);}catch(e){$("btResult").innerHTML='<div class="errline">Backtest failed.</div>';return;}
+  if(d.error){$("btResult").innerHTML='<div class="errline">'+d.error+'</div>';return;}
+  $("btTime").textContent=d.generated_at?"ran "+new Date(d.generated_at).toLocaleTimeString("en-US",{hour12:false}):"";
+  const m=d.metrics||{};
+  if(!m.trades){
+    $("btResult").innerHTML='<div class="run-warn" style="background:rgba(124,159,255,.08);border-color:rgba(124,159,255,.25);color:#bcd">No trades generated for '+d.symbol+' over '+(d.period||period)+'. The VW-RSI signal never triggered its entry conditions on this name/timeframe — that\'s a real result, not an error. Try a more volatile name or a longer window.</div>';
+    return;
+  }
+  const verdict = (m.profit_factor!=null && m.profit_factor>=1.3 && m.expectancy>0) ? ["EDGE","var(--up)","rgba(46,213,115,.14)"]
+    : (m.expectancy>0) ? ["MARGINAL","var(--amber)","rgba(255,166,43,.12)"]
+    : ["NO EDGE","var(--down)","rgba(255,93,108,.12)"];
+  const metric=(k,v,c)=>`<div class="btm"><div class="k">${k}</div><div class="v ${c||''}">${v}</div></div>`;
+  const grid=[
+    metric("Total Return",pct(m.total_return_pct),cls(m.total_return_pct)),
+    metric("Final Equity","$"+fmtN(m.final_equity)),
+    metric("Win Rate",m.win_rate+"%"),
+    metric("Trades",m.trades+" ("+m.wins+"W/"+m.losses+"L)"),
+    metric("Profit Factor",m.profit_factor!=null?m.profit_factor:"—",m.profit_factor>=1?'up':'down'),
+    metric("Expectancy","$"+fmtN(m.expectancy),cls(m.expectancy)),
+    metric("Max Drawdown",m.max_drawdown_pct+"%","down"),
+    metric("Sharpe",m.sharpe,m.sharpe>=1?'up':''),
+    metric("Avg Win","$"+fmtN(m.avg_win),"up"),
+    metric("Avg Loss","$"+fmtN(m.avg_loss),"down"),
+    metric("Avg Bars Held",m.avg_bars_held),
+  ].join("");
+  const trades=(d.trades||[]).slice().reverse().map(t=>`<tr><td>${t.entry_date}</td><td>${t.exit_date}</td><td>${fmtN(t.entry)}</td><td>${fmtN(t.exit)}</td><td>${t.shares}</td><td class="${cls(t.pnl)}">${t.pnl>=0?'+':''}${fmtN(t.pnl)}</td><td class="${cls(t.pnl_pct)}">${pct(t.pnl_pct)}</td><td>${t.bars_held}</td><td class="reason">${t.reason}</td></tr>`).join("");
+  const a=d.assumptions||{};
+  $("btResult").innerHTML=`
+    <div class="btverdict" style="background:${verdict[2]}">
+      <div><div class="lbl">${d.symbol} · ${d.period} · VW-RSI</div><div class="big ${cls(m.total_return_pct)}">${pct(m.total_return_pct)}</div></div>
+      <div class="tag" style="background:${verdict[1]};color:#08101a">${verdict[0]}</div>
+      <div style="font-family:var(--sans);font-size:11px;color:var(--muted);margin-left:auto;max-width:340px;text-align:right">No look-ahead · entries at next-bar open · ${a.slippage_bps}bps slippage · ${(a.risk_pct*100)}% risk/trade · data: ${a.data}</div>
+    </div>
+    <div class="btmetrics">${grid}</div>
+    <div class="bth">Trade log (${m.trades})</div>
+    <table class="bttbl"><thead><tr><th>Entry</th><th>Exit</th><th>In</th><th>Out</th><th>Sh</th><th>P&amp;L</th><th>%</th><th>Bars</th><th>Reason</th></tr></thead><tbody>${trades}</tbody></table>`;
+}
+
 /* ---------- Forensic scanner ---------- */
 let fzDone=false;
 function runForensic(e){e.preventDefault();const v=$("fzInput").value.trim().toUpperCase();if(v)runForensicSym(v);}
@@ -736,8 +817,8 @@ setInterval(freshness,1000);
 initCharts();
 loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
 // deep-link: #agents / #pnl open that view directly
-{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners"].includes(h))switchView(h);}
-window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners"].includes(h))switchView(h);});
+{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest"].includes(h))switchView(h);}
+window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest"].includes(h))switchView(h);});
 setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();},30000);
 </script>
 </body>

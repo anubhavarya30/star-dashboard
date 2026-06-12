@@ -68,6 +68,13 @@ def runners():
     return cached("runners", build, ttl=600)  # heavy (yfinance per name); 10-min cache
 
 
+def run_backtest(sym, period):
+    def build():
+        import backtest as bt
+        return bt.backtest(sym, period=period)
+    return cached(f"backtest:{sym}:{period}", build, ttl=600)  # heavy; 10-min cache
+
+
 def num(x):
     try:
         f = float(x)
@@ -335,6 +342,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(forensic(sym))
             if u.path == "/api/runners":
                 return self._send_json(runners())
+            if u.path == "/api/backtest":
+                return self._send_json(run_backtest(sym, q.get("period", ["2y"])[0]))
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":
