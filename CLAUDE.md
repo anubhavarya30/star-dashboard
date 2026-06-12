@@ -1,7 +1,46 @@
 # STAR — Project State & Continuation Notes
 
 > **Read this first when the session restarts. Do NOT pretend to start fresh — continue from here.**
-> Last updated: 2026-06-10. User: anubhav.arya789@gmail.com
+> Last updated: 2026-06-12. User: anubhav.arya789@gmail.com
+
+---
+
+## 🗓️ Session log — 2026-06-12 (signal + backtest work)
+
+Laptop crashed overnight; resumed from this file. Recovered last night's task from
+the Claude session JSONL (`~/.claude/projects/-Users-anubhavarya-star-star-dashboard/`):
+the ask was **"build the backtest engine"** + **"add a backtest tab to the hamburger menu."**
+
+What got done today (all committed, then pushed to origin/main):
+- **`engine/backtest.py`** — no-look-ahead backtest engine (entries fill next-bar
+  open, intrabar stop/target, commission+slippage, risk-based sizing; reports win
+  rate, profit factor, expectancy, max DD, Sharpe, equity curve + trade log).
+- **`engine/indicators.py`** — fixed a **frozen RSI** bug (it was seeded from the
+  OLDEST `period` bars, so it never reflected recent price). Now Wilder/EWM.
+- **Backtest tab** in `terminal.html` + **`/api/backtest?sym=&period=`** in
+  `terminal_server.py` (EDGE/MARGINAL/NO-EDGE verdict, metrics grid, trade log).
+- **Runner Scanner tickers are now clickable** → load the internal detail view;
+  **hover shows Finviz/StockAnalysis**; a SOURCE row links Yahoo/Finviz/
+  StockAnalysis/SEC per name (research → source provenance, for auditable trades).
+- **`engine/trading_signals.py`** — **CRITICAL FIX.** The VW-RSI BUY rule required
+  `RSI<30 AND price>=EMA50` simultaneously → impossible on daily data (verified: 0
+  occurrences in 5y on NVDA), so the signal **never traded**. Redefined as
+  **pullback-in-uptrend**: RSI in 35–50 band, price >= EMA50, volume >= 1.3x avg.
+  Now generates trades — but sample is tiny (2–8 trades/5y/name) and shows **no
+  proven edge yet**. Do NOT trade real money on it; it needs a real sample.
+- **`engine/star_vwrsi_strategy.pine`** — 1:1 Pine Script port for the user's
+  **TradingView premium** Strategy Tester (intraday + deep history). TradingView
+  can't be API'd for backtesting; loop is: user tunes in TV → tells Claude winning
+  settings → Claude syncs both `trading_signals.py` and the `.pine`.
+
+**Open next steps:** (1) user tunes the Pine strategy on intraday/runner names to
+find a real edge; (2) keep `.pine` and `trading_signals.py` in sync; (3) optional
+TradingView alert → webhook → IBKR bridge for live execution (NOT built yet);
+(4) loosen filters to get a 30+ trade sample before trusting any metric.
+
+**Auto-save is ON.** A Stop hook in `.claude/settings.local.json` auto-commits any
+uncommitted changes when Claude finishes a turn — the user should NOT have to ask
+to "save" anymore. (See `scripts/autosave.sh`.)
 
 ---
 
