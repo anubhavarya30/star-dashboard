@@ -11,21 +11,29 @@ class Indicators:
 
     @staticmethod
     def rsi(prices: pd.Series, period: int = 14) -> float:
-        """Calculate RSI (Relative Strength Index)"""
+        """Calculate RSI (Wilder's, on the MOST RECENT `period` bars).
+
+        Fix: the previous implementation seeded from deltas[:period+1] — the
+        OLDEST 15 bars of the whole series — so RSI never updated with recent
+        price action (it returned a frozen value). This uses Wilder's smoothing
+        (EWM, alpha=1/period) over the full series and reads the latest value.
+        """
         if len(prices) < period + 1:
             return 50.0
 
-        deltas = prices.diff()
-        seed = deltas[:period + 1]
-        up = seed[seed >= 0].sum() / period
-        down = -seed[seed < 0].sum() / period
+        delta = prices.diff().dropna()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean().iloc[-1]
+        avg_loss = loss.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean().iloc[-1]
 
-        if down == 0:
-            return 100.0 if up > 0 else 50.0
+        if pd.isna(avg_gain) or pd.isna(avg_loss):
+            return 50.0
+        if avg_loss == 0:
+            return 100.0 if avg_gain > 0 else 50.0
 
-        rs = up / down
-        rsi = 100.0 - (100.0 / (1.0 + rs))
-        return float(rsi)
+        rs = avg_gain / avg_loss
+        return float(100.0 - (100.0 / (1.0 + rs)))
 
     @staticmethod
     def atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> float:
