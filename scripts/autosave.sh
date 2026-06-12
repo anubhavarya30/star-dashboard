@@ -20,5 +20,6 @@ fi
 #    turn if offline / no upstream / auth prompt — autosave must stay non-blocking)
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 if [ -n "$(git log "@{u}.." 2>/dev/null)" ] || ! git rev-parse "@{u}" >/dev/null 2>&1; then
-  timeout 30 git push -q origin "$branch" >/dev/null 2>&1 || true
+  # GIT_TERMINAL_PROMPT=0 → never block on a credential prompt; fail fast instead.
+  GIT_TERMINAL_PROMPT=0 git push -q origin "$branch" >/dev/null 2>&1 || true
 fi
