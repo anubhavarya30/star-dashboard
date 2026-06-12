@@ -10,10 +10,10 @@ from indicators import Indicators
 class VolumeWeightedRSISystem:
     """
     Production-grade trading system based on:
-    - RSI oversold detection (< 30)
-    - Volume confirmation (> 200MA)
-    - ATR-based dynamic stops
-    - Trend confirmation (EMA-50)
+    - Pullback-in-uptrend entry: RSI cooled to 35-50 (shallow dip)
+    - Volume confirmation (>= 1.3x the 200-bar volume MA)
+    - Trend confirmation (price above EMA-50)
+    - ATR-based dynamic stops, 2% profit target
     """
 
     def __init__(self):
@@ -80,7 +80,7 @@ class VolumeWeightedRSISystem:
                 "take_profit": take_profit,
                 "entry_price": current_price,
                 "atr": atr,
-                "reason": f"RSI {rsi:.1f} (oversold) + Volume {current_volume/volume_ma:.2f}x + EMA confirm"
+                "reason": f"RSI {rsi:.1f} (pullback) + Volume {current_volume/volume_ma:.2f}x + above EMA50"
             }
 
         # SELL Signal: Risk Management
@@ -101,16 +101,23 @@ class VolumeWeightedRSISystem:
         return self._hold_signal("No clear signal")
 
     def _is_buy_signal(self, rsi: float, price: float, ema50: float, volume: float, volume_ma: float) -> bool:
-        """Check if conditions for BUY are met"""
-        # RSI oversold
-        if rsi > 30:
+        """Check if conditions for BUY are met.
+
+        Strategy: buy a SHALLOW PULLBACK inside an uptrend, not a crash. The old
+        rule required RSI<30 AND price>=EMA50 simultaneously — mutually exclusive
+        on daily data (by the time RSI<30, price is far below EMA50), so it never
+        fired. We now look for a healthy dip: RSI cooled into the 35-50 band while
+        price is still above its 50-EMA, confirmed by above-average volume.
+        """
+        # Shallow pullback band (cooled off, but not capitulating)
+        if rsi < 35 or rsi > 50:
             return False
 
         # Volume confirmation
-        if volume < 1.5 * volume_ma:
+        if volume < 1.3 * volume_ma:
             return False
 
-        # Trend confirmation (price above EMA50)
+        # Trend confirmation (price still above EMA50 = uptrend intact)
         if price < ema50:
             return False
 
@@ -137,16 +144,17 @@ class VolumeWeightedRSISystem:
         confidence = 0.5  # Base
 
         if signal_type == "BUY":
-            # RSI strength: more oversold = more confident
-            rsi_score = (30 - rsi) / 30 * 0.3  # 0-0.3
+            # Pullback depth: nearer the bottom of the 35-50 band = deeper dip,
+            # better entry. rsi 35 -> +0.3, rsi 50 -> 0.
+            rsi_score = max(0.0, (50 - rsi) / 15 * 0.3)  # 0-0.3
             confidence += rsi_score
 
-            # Price below EMA = trend confirmation
-            if price_vs_ema < 0:
+            # Price above EMA = uptrend confirmation (what we want here)
+            if price_vs_ema >= 0:
                 confidence += 0.2
 
-            # Volume strength: high volume = more confident
-            volume_score = min((volume_ratio - 1.5) / 1.5, 0.2)  # 0-0.2
+            # Volume strength: high volume = more confident (baseline 1.3x)
+            volume_score = min(max((volume_ratio - 1.3) / 1.5, 0.0), 0.2)  # 0-0.2
             confidence += volume_score
 
         elif signal_type == "SELL":
