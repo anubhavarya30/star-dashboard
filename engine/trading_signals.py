@@ -64,7 +64,10 @@ class VolumeWeightedRSISystem:
         # BUY Signal: Volume-Weighted RSI Entry
         if self._is_buy_signal(rsi, current_price, ema50, current_volume, volume_ma):
             stop_loss = current_price - (1.2 * atr)
-            take_profit = current_price * 1.02  # 2% profit target
+            # Target as a 2R multiple of risk (entry -> stop), not a flat 2%. The
+            # flat target risked ~ATR (3-5%) to make 2% -> negative expectancy.
+            risk = current_price - stop_loss
+            take_profit = current_price + (2.0 * risk)  # 2R
 
             confidence = self._calculate_confidence(
                 rsi=rsi,

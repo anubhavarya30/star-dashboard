@@ -38,7 +38,7 @@ volMult = input.float(1.2, "Min volume x avg", step=0.1, group="Entry")
 
 atrLen  = input.int(14,    "ATR length", group="Exit")
 atrStop = input.float(1.2, "Stop = entry - x*ATR", step=0.1, group="Exit")
-tpPct   = input.float(2.0, "Take-profit %", step=0.1, group="Exit") / 100.0
+rrMult  = input.float(2.0, "Target = R multiple of risk (2R)", step=0.5, group="Exit")
 exitRsi = input.float(65.0,"Exit if RSI rises above", group="Exit")
 
 riskPct = input.float(2.0, "Risk % of equity / trade", step=0.5, group="Risk") / 100.0
@@ -63,7 +63,7 @@ var float tpPx   = na
 if longCond and strategy.position_size == 0 and qty > 0
     strategy.entry("Long", strategy.long, qty=qty)
     stopPx := close - atrStop * atr
-    tpPx   := close * (1.0 + tpPct)
+    tpPx   := close + rrMult * (close - stopPx)  // 2R target
 
 if strategy.position_size > 0
     strategy.exit("Bracket", from_entry="Long", stop=stopPx, limit=tpPx)
