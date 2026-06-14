@@ -10,8 +10,8 @@ from indicators import Indicators
 class VolumeWeightedRSISystem:
     """
     Production-grade trading system based on:
-    - Pullback-in-uptrend entry: RSI cooled to 35-50 (shallow dip)
-    - Volume confirmation (>= 1.3x the 200-bar volume MA)
+    - Pullback-in-uptrend entry: RSI cooled to 30-55 (dip inside an uptrend)
+    - Volume confirmation (>= 1.2x the 20-bar volume MA)
     - Trend confirmation (price above EMA-50)
     - ATR-based dynamic stops, 2% profit target
     """
@@ -21,7 +21,7 @@ class VolumeWeightedRSISystem:
         self.rsi_period = 14
         self.ema_period = 50
         self.atr_period = 14
-        self.volume_period = 200
+        self.volume_period = 20   # 20-bar volume MA (was 200 — too slow to ever confirm a pullback)
 
     def generate_signal(self, ohlcv_data: dict) -> dict:
         """
@@ -109,12 +109,13 @@ class VolumeWeightedRSISystem:
         fired. We now look for a healthy dip: RSI cooled into the 35-50 band while
         price is still above its 50-EMA, confirmed by above-average volume.
         """
-        # Shallow pullback band (cooled off, but not capitulating)
-        if rsi < 35 or rsi > 50:
+        # Pullback band (cooled off, but not capitulating). Widened 35-50 -> 30-55
+        # to gather a real sample; RSI rarely dips below 30 while still above EMA50.
+        if rsi < 30 or rsi > 55:
             return False
 
-        # Volume confirmation
-        if volume < 1.3 * volume_ma:
+        # Volume confirmation (>= 1.2x the 20-bar avg)
+        if volume < 1.2 * volume_ma:
             return False
 
         # Trend confirmation (price still above EMA50 = uptrend intact)
@@ -144,17 +145,17 @@ class VolumeWeightedRSISystem:
         confidence = 0.5  # Base
 
         if signal_type == "BUY":
-            # Pullback depth: nearer the bottom of the 35-50 band = deeper dip,
-            # better entry. rsi 35 -> +0.3, rsi 50 -> 0.
-            rsi_score = max(0.0, (50 - rsi) / 15 * 0.3)  # 0-0.3
+            # Pullback depth: nearer the bottom of the 30-55 band = deeper dip,
+            # better entry. rsi 30 -> +0.3, rsi 55 -> 0.
+            rsi_score = max(0.0, (55 - rsi) / 25 * 0.3)  # 0-0.3
             confidence += rsi_score
 
             # Price above EMA = uptrend confirmation (what we want here)
             if price_vs_ema >= 0:
                 confidence += 0.2
 
-            # Volume strength: high volume = more confident (baseline 1.3x)
-            volume_score = min(max((volume_ratio - 1.3) / 1.5, 0.0), 0.2)  # 0-0.2
+            # Volume strength: high volume = more confident (baseline 1.2x)
+            volume_score = min(max((volume_ratio - 1.2) / 1.5, 0.0), 0.2)  # 0-0.2
             confidence += volume_score
 
         elif signal_type == "SELL":

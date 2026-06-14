@@ -30,11 +30,11 @@ strategy("STAR VW-RSI Pullback", overlay=true, initial_capital=10000,
 
 // ---------- Inputs (tune these in the Strategy Tester gear) ----------
 rsiLen  = input.int(14,    "RSI length", minval=2, group="Entry")
-rsiLo   = input.float(35.0,"RSI band low (pullback floor)", group="Entry")
-rsiHi   = input.float(50.0,"RSI band high (pullback ceiling)", group="Entry")
+rsiLo   = input.float(30.0,"RSI band low (pullback floor)", group="Entry")
+rsiHi   = input.float(55.0,"RSI band high (pullback ceiling)", group="Entry")
 emaLen  = input.int(50,    "EMA trend filter", group="Entry")
-volLen  = input.int(20,    "Volume MA length (was 200 in py — 20 for intraday)", group="Entry")
-volMult = input.float(1.3, "Min volume x avg", step=0.1, group="Entry")
+volLen  = input.int(20,    "Volume MA length", group="Entry")
+volMult = input.float(1.2, "Min volume x avg", step=0.1, group="Entry")
 
 atrLen  = input.int(14,    "ATR length", group="Exit")
 atrStop = input.float(1.2, "Stop = entry - x*ATR", step=0.1, group="Exit")
