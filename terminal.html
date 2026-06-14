@@ -922,7 +922,8 @@ loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory
 // deep-link: #agents / #pnl open that view directly
 {const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex"].includes(h))switchView(h);}
 window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex"].includes(h))switchView(h);});
-setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();},30000);
+setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();
+  if(document.getElementById("view-agents").classList.contains("active"))loadGexAgent();},30000);
 </script>
 </body>
 </html>
