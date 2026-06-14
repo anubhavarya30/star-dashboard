@@ -45,7 +45,10 @@ signal; needs real-time/options data to trade for real (we have neither yet).
 **GEX forward-test (2026-06-14):** can't backtest GEX historically (free data gone,
 yfinance has no options history). Instead `engine/gex_logger.py` logs real daily
 GEX to `data/gex_history.csv`; `scripts/log_gex.sh` runs it for SPY/QQQ/IWM via a
-**cron job weekdays 3:15pm CDT** (`crontab -l` to view; logs to /tmp/star_gex.log).
+**launchd agent weekdays 3:15pm** (`com.star.gexlogger`, plist in scripts/ +
+~/Library/LaunchAgents/; survives a closed laptop — runs missed jobs on wake;
+logs to /tmp/star_gex.log). Manage: `launchctl list | grep gexlogger`,
+`launchctl kickstart -k gui/$(id -u)/com.star.gexlogger` to run now. (Cron removed.)
 `gex_logger.py test SPY` reports the negative-gamma→next-day-downside edge once 20+
 days are logged. User has Webull options ($500) as the eventual execution venue.
 
