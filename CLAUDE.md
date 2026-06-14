@@ -42,6 +42,13 @@ accelerates). A GEX agent banner sits at the top of the STAR Agents view. NOTE:
 GEX is an index/options game (SPY/QQQ/IWM) — separate from the daily-equity VW-RSI
 signal; needs real-time/options data to trade for real (we have neither yet).
 
+**GEX forward-test (2026-06-14):** can't backtest GEX historically (free data gone,
+yfinance has no options history). Instead `engine/gex_logger.py` logs real daily
+GEX to `data/gex_history.csv`; `scripts/log_gex.sh` runs it for SPY/QQQ/IWM via a
+**cron job weekdays 3:15pm CDT** (`crontab -l` to view; logs to /tmp/star_gex.log).
+`gex_logger.py test SPY` reports the negative-gamma→next-day-downside edge once 20+
+days are logged. User has Webull options ($500) as the eventual execution venue.
+
 **VW-RSI status:** with 2R target + loosened filters, basket PF = 1.05 (marginal,
 name-dependent). Not a robust edge. Next: regime/name filtering or replace signal.
 
