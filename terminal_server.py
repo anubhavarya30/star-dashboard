@@ -75,6 +75,20 @@ def run_backtest(sym, period):
     return cached(f"backtest:{sym}:{period}", build, ttl=600)  # heavy; 10-min cache
 
 
+def gex(sym):
+    def build():
+        import gex as gx
+        return gx.compute(sym)
+    return cached(f"gex:{sym}", build, ttl=120)  # options pull is heavy; 2-min cache
+
+
+def gex_agent(sym):
+    def build():
+        import gex as gx
+        return gx.agent(sym)
+    return cached(f"gexagent:{sym}", build, ttl=120)
+
+
 def num(x):
     try:
         f = float(x)
@@ -344,6 +358,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(runners())
             if u.path == "/api/backtest":
                 return self._send_json(run_backtest(sym, q.get("period", ["2y"])[0]))
+            if u.path == "/api/gex":
+                return self._send_json(gex(q.get("sym", ["SPY"])[0].upper()))
+            if u.path == "/api/gex_agent":
+                return self._send_json(gex_agent(q.get("sym", ["SPY"])[0].upper()))
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":

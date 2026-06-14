@@ -33,6 +33,18 @@ What got done today (all committed, then pushed to origin/main):
   can't be API'd for backtesting; loop is: user tunes in TV → tells Claude winning
   settings → Claude syncs both `trading_signals.py` and the `.pine`.
 
+**GEX Radar (added 2026-06-14):** `engine/gex.py` computes dealer gamma from REAL
+yfinance options OI (Black-Scholes gamma, SqueezeMetrics convention — assumption
+stated honestly). Endpoints `/api/gex` + `/api/gex_agent`. New "GEX Radar"
+hamburger tab shows regime (pos/neg gamma), gamma flip, call/put walls, per-strike
+gamma bars, and the falling-market edge (negative gamma below flip = downside
+accelerates). A GEX agent banner sits at the top of the STAR Agents view. NOTE:
+GEX is an index/options game (SPY/QQQ/IWM) — separate from the daily-equity VW-RSI
+signal; needs real-time/options data to trade for real (we have neither yet).
+
+**VW-RSI status:** with 2R target + loosened filters, basket PF = 1.05 (marginal,
+name-dependent). Not a robust edge. Next: regime/name filtering or replace signal.
+
 **Open next steps:** (1) user tunes the Pine strategy on intraday/runner names to
 find a real edge; (2) keep `.pine` and `trading_signals.py` in sync; (3) optional
 TradingView alert → webhook → IBKR bridge for live execution (NOT built yet);

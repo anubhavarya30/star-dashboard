@@ -277,6 +277,32 @@
   .bttbl td{font-size:12px;padding:6px 10px;border-bottom:1px solid var(--line-soft)}
   .bttbl .reason{font-family:var(--sans);font-size:10px;color:var(--muted)}
 
+  /* GEX */
+  .gexhead{display:flex;align-items:center;gap:16px;padding:16px;border-radius:9px;margin-bottom:14px;border:1px solid var(--line)}
+  .gexhead .reg{font-size:13px;font-weight:800;letter-spacing:1px;font-family:var(--sans);padding:6px 12px;border-radius:7px}
+  .gexhead .big{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .gexhead .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .gexedge{font-family:var(--sans);font-size:12.5px;line-height:1.55;padding:12px 14px;border-radius:8px;margin-bottom:16px}
+  .gexlevels{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:8px;overflow:hidden;margin-bottom:16px}
+  .gexlv{background:var(--panel-2);padding:11px 13px}
+  .gexlv .k{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .gexlv .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:3px}
+  .gexbars{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+  .gexbar{display:grid;grid-template-columns:64px 1fr;align-items:center;gap:10px;font-variant-numeric:tabular-nums}
+  .gexbar .kstrike{font-size:12px;font-weight:600;text-align:right}
+  .gexbar .track{position:relative;height:16px;background:#0e131c;border-radius:3px;overflow:hidden}
+  .gexbar .track i{position:absolute;top:0;bottom:0;border-radius:3px}
+  .gexbar .track i.pos{left:50%;background:linear-gradient(90deg,rgba(46,213,115,.4),var(--up))}
+  .gexbar .track i.neg{right:50%;background:linear-gradient(270deg,rgba(255,93,108,.4),var(--down))}
+  .gexbar .track .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+  /* GEX agent banner (in STAR Agents area) */
+  .gexagent{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:9px;margin-bottom:16px;border:1px solid var(--line);background:var(--panel-2)}
+  .gexagent .ico{width:34px;height:34px;flex:0 0 34px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+  .gexagent .ico svg{width:18px;height:18px}
+  .gexagent .nm{font-size:13px;font-weight:700}
+  .gexagent .vt{font-size:11px;font-weight:800;font-family:var(--sans);padding:3px 9px;border-radius:6px;margin-left:8px}
+  .gexagent .dt{font-size:12px;color:var(--muted);font-family:var(--sans);line-height:1.5;margin-top:5px}
+
   @media (max-width:1024px){ .grid{grid-template-columns:1fr} .strip{display:none} .movers{grid-template-columns:1fr} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
@@ -311,6 +337,10 @@
   <div class="navitem" data-view="backtest" tabindex="0" role="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-7"/></svg>
     <span class="lbl">Backtest</span><span class="hint">prove the edge</span>
+  </div>
+  <div class="navitem" data-view="gex" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+    <span class="lbl">GEX Radar</span><span class="hint">dealer gamma</span>
   </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
@@ -414,6 +444,7 @@
   <div class="view-pad">
     <section class="panel">
       <div class="ph"><span class="accent">STAR Agents — Multi-Agent Consensus</span><span class="meta" id="agentsTime">running…</span></div>
+      <div id="gexAgent"></div>
       <div id="agentsGrid" class="agents-grid"><div class="empty">Analyzing real market data…</div></div>
     </section>
   </div>
@@ -477,6 +508,24 @@
         <span style="font-size:11px;color:var(--faint);font-family:var(--sans)">e.g. AMZN, NVDA, TSLA — any US ticker</span>
       </form>
       <div id="btResult"><div class="empty">Enter a ticker to backtest the VW-RSI strategy on real history.</div></div>
+    </section>
+  </div>
+</div>
+
+<!-- ===== GEX RADAR VIEW ===== -->
+<div id="view-gex" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">GEX Radar — Dealer Gamma Positioning</span><span class="meta" id="gexTime"></span></div>
+      <div class="run-warn" style="background:rgba(124,159,255,.08);border-color:rgba(124,159,255,.25);color:#bcd">
+        Where we have an edge in a <b>falling</b> market. Gamma exposure is modeled from <b>real options open interest</b> (yfinance, delayed) under the dealers-long-calls/short-puts convention. <b>Negative gamma below the flip</b> = dealer hedging accelerates selloffs → downside trends run, don't fade dips. <b>Positive gamma</b> = price pins between the walls. Index ETFs work best (SPY, QQQ, IWM).</div>
+      <form onsubmit="runGex(event)" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div class="cmd" style="flex:0 0 auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input id="gexInput" placeholder="SPY" autocomplete="off" spellcheck="false" aria-label="GEX ticker"></div>
+        <button class="btn" type="submit">Scan</button>
+        <span style="font-size:11px;color:var(--faint);font-family:var(--sans)">SPY · QQQ · IWM · any optionable ticker</span>
+      </form>
+      <div id="gexResult"><div class="empty">Scanning SPY dealer gamma…</div></div>
     </section>
   </div>
 </div>
@@ -612,6 +661,7 @@ function switchView(name){
   if(name==="pnl"){loadPnlCalendar();}
   if(name==="forensic" && !fzDone){runForensicSym("NVDA");fzDone=true;}
   if(name==="runners"){loadRunners();}
+  if(name==="gex" && !gexDone){runGexSym("SPY");gexDone=true;}
 }
 
 /* ---------- Runner Scanner ---------- */
@@ -699,6 +749,45 @@ async function runBacktestSym(sym,period){
     <table class="bttbl"><thead><tr><th>Entry</th><th>Exit</th><th>In</th><th>Out</th><th>Sh</th><th>P&amp;L</th><th>%</th><th>Bars</th><th>Reason</th></tr></thead><tbody>${trades}</tbody></table>`;
 }
 
+/* ---------- GEX Radar ---------- */
+let gexDone=false;
+function runGex(e){e.preventDefault();const v=$("gexInput").value.trim().toUpperCase();if(v)runGexSym(v);}
+async function runGexSym(sym){
+  $("gexResult").innerHTML='<div class="empty">Pulling '+sym+' option chain &amp; modeling dealer gamma…</div>';
+  let d;try{d=await api(`/api/gex?sym=${sym}`);}catch(e){$("gexResult").innerHTML='<div class="errline">GEX scan failed.</div>';return;}
+  if(d.error){$("gexResult").innerHTML='<div class="run-warn" style="background:rgba(124,159,255,.08);border-color:rgba(124,159,255,.25);color:#bcd">'+d.symbol+': '+d.error+'</div>';return;}
+  $("gexTime").textContent=d.generated_at?"as of "+new Date(d.generated_at).toLocaleTimeString("en-US",{hour12:false})+" · "+d.expiries_used+" expiries":"";
+  const neg=d.regime==="negative", below=!d.above_flip;
+  const regCol=neg?"var(--down)":"var(--up)", regBg=neg?"rgba(255,93,108,.12)":"rgba(46,213,115,.12)";
+  const regTxt=neg?"NEGATIVE GAMMA":"POSITIVE GAMMA";
+  let edge,edgeCol;
+  if(neg&&below){edge="<b>Falling-market EDGE.</b> Negative gamma & price below the flip ("+d.gamma_flip+"): dealer hedging <b>accelerates selloffs</b>. Lean WITH the downtrend — don't fade dips. Downside magnet = put wall <b>"+d.put_wall+"</b>.";edgeCol="rgba(255,93,108,.10)";}
+  else if(neg){edge="<b>Unstable / amplifying.</b> Net negative gamma: moves get bigger both ways. Trend-follow, widen stops, expect range expansion.";edgeCol="rgba(255,166,43,.10)";}
+  else{edge="<b>Pinned / mean-reverting.</b> Positive gamma suppresses volatility — price tends to pin between put wall <b>"+d.put_wall+"</b> and call wall <b>"+d.call_wall+"</b>. Fade the extremes, no edge for trend.";edgeCol="rgba(46,213,115,.10)";}
+  const maxAbs=Math.max(1,...(d.strikes||[]).map(s=>Math.abs(s.gex)));
+  const bars=(d.strikes||[]).map(s=>{
+    const w=Math.min(Math.abs(s.gex)/maxAbs*50,50), pos=s.gex>=0;
+    const atSpot=Math.abs(s.strike-d.spot)<=Math.abs(d.spot*0.004);
+    return `<div class="gexbar"><span class="kstrike" style="${atSpot?'color:var(--amber)':''}">${s.strike}${atSpot?' ◄':''}</span>
+      <span class="track"><span class="mid"></span><i class="${pos?'pos':'neg'}" style="width:${w}%;${pos?'left:50%':'right:50%'}"></i></span></div>`;}).join("");
+  $("gexResult").innerHTML=`
+    <div class="gexhead" style="background:${regBg}">
+      <div><div class="lbl">${d.symbol} spot</div><div class="big">$${fmtN(d.spot)}</div></div>
+      <div class="reg" style="background:${regCol};color:#08101a">${regTxt}</div>
+      <div style="margin-left:auto;text-align:right"><div class="lbl">Net GEX</div><div class="big ${neg?'down':'up'}">${(d.net_gex/1e9).toFixed(2)}B</div></div>
+    </div>
+    <div class="gexedge" style="background:${edgeCol}">${edge}</div>
+    <div class="gexlevels">
+      <div class="gexlv"><div class="k">Gamma Flip</div><div class="v">${d.gamma_flip!=null?'$'+fmtN(d.gamma_flip):'—'}</div></div>
+      <div class="gexlv"><div class="k">Spot vs Flip</div><div class="v ${below?'down':'up'}">${below?'BELOW':'ABOVE'}</div></div>
+      <div class="gexlv"><div class="k">Call Wall (resist)</div><div class="v up">$${fmtN(d.call_wall)}</div></div>
+      <div class="gexlv"><div class="k">Put Wall (support)</div><div class="v down">$${fmtN(d.put_wall)}</div></div>
+    </div>
+    <div class="bth">Gamma by strike (green = vol-suppressing, red = vol-accelerating)</div>
+    <div class="gexbars">${bars||'<div class="empty">No strikes.</div>'}</div>
+    <div style="font-size:10px;color:var(--faint);font-family:var(--sans);margin-top:12px">${d.assumption}</div>`;
+}
+
 /* ---------- Forensic scanner ---------- */
 let fzDone=false;
 function runForensic(e){e.preventDefault();const v=$("fzInput").value.trim().toUpperCase();if(v)runForensicSym(v);}
@@ -734,7 +823,21 @@ document.querySelectorAll(".navitem").forEach(n=>{
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu();});
 
 /* ---------- Agents view ---------- */
+async function loadGexAgent(){
+  let g;try{g=await api(`/api/gex_agent?sym=SPY`);}catch(e){return;}
+  const el=$("gexAgent");if(!el)return;
+  const neg=g.regime==="negative";
+  const col=g.vote==="DOWNSIDE EDGE"?"var(--down)":g.vote==="UNSTABLE"?"var(--amber)":g.vote==="PINNED"?"var(--up)":"var(--muted)";
+  const bg=g.vote==="DOWNSIDE EDGE"?"rgba(255,93,108,.12)":g.vote==="PINNED"?"rgba(46,213,115,.12)":"rgba(255,166,43,.10)";
+  const lv=g.gamma_flip!=null?` · flip $${fmtN(g.gamma_flip)} · put wall $${fmtN(g.put_wall)} · call wall $${fmtN(g.call_wall)}`:"";
+  el.innerHTML=`<div class="gexagent" style="cursor:pointer" onclick="switchView('gex')" title="Open GEX Radar">
+    <div class="ico" style="background:${bg}"><svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></div>
+    <div style="flex:1"><div><span class="nm">GEX (dealer gamma)</span><span class="vt" style="background:${col};color:#08101a">${g.vote}</span>
+      <span style="font-size:11px;color:var(--faint);font-family:var(--sans)">${g.symbol} $${fmtN(g.spot)}${lv}</span></div>
+      <div class="dt">${g.detail}</div></div></div>`;
+}
 async function loadAgents(){
+  loadGexAgent();
   const d=await api(`/api/agents`);
   $("agentsTime").textContent="updated "+(d.generated_at?new Date(d.generated_at).toLocaleTimeString("en-US",{hour12:false}):"");
   const cards=(d.results||[]).map(r=>{
@@ -817,8 +920,8 @@ setInterval(freshness,1000);
 initCharts();
 loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
 // deep-link: #agents / #pnl open that view directly
-{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest"].includes(h))switchView(h);}
-window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest"].includes(h))switchView(h);});
+{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex"].includes(h))switchView(h);}
+window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex"].includes(h))switchView(h);});
 setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();},30000);
 </script>
 </body>
