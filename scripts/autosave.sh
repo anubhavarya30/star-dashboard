@@ -11,9 +11,7 @@ if [ -n "$(git status --porcelain)" ]; then
   ts="$(date '+%Y-%m-%d %H:%M:%S')"
   git commit -q -m "autosave: ${ts}
 
-Auto-committed by Stop hook (scripts/autosave.sh).
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>" || true
+Auto-committed by Stop hook (scripts/autosave.sh)." || true
 fi
 
 # 2) push if the local branch is ahead of its upstream (quietly; never fail the
