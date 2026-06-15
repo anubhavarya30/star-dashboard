@@ -1,6 +1,16 @@
 {
   "date": "2026-06-15",
   "realized_pnl": 0.0,
-  "open": [],
+  "open": [
+    {
+      "symbol": "SPCX",
+      "entry": 192.5,
+      "stop": 167.85,
+      "shares": 2,
+      "target": 241.8,
+      "risk_dollars": 49.3,
+      "opened_at": "2026-06-15T15:17:12.217852"
+    }
+  ],
   "closed": []
 }
