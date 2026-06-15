@@ -138,10 +138,16 @@ def _pick(researched, equity):
     target = round(price + 2 * (price - stop), 2)
     risk = rm.pre_trade_check(best["symbol"], price, stop, target, equity=equity)
     sec = f" · {best['sector']}{' (CONFIRMED)' if best.get('sector_confirmed') else ''}" if best.get("sector") else ""
+    # leverage layer: surface the call play (real $500 upside vs a few shares)
+    try:
+        import options_play as op
+        opt = op.best_call(best["symbol"], equity=equity or 500.0)
+    except Exception as e:
+        opt = {"error": f"options lookup failed: {e}"}
     return {"symbol": best["symbol"], "thesis": f"Strongest of {len(researched)} researched: "
             f"+{best['chg_pct']}% on liquid volume, holding above VWAP{sec}.",
             "score": best["score"], "sector": best.get("sector"),
-            "sector_confirmed": best.get("sector_confirmed"), "risk": risk}
+            "sector_confirmed": best.get("sector_confirmed"), "risk": risk, "options": opt}
 
 
 if __name__ == "__main__":

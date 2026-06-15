@@ -380,6 +380,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/risk_status":
                 import risk_manager as rm
                 return self._send_json(rm.status())
+            if u.path == "/api/options_play":
+                def _op():
+                    import options_play as op
+                    return op.best_call(sym)
+                return self._send_json(cached("opt:" + sym, _op, ttl=120))
             if u.path == "/api/scout":
                 def _sc():
                     import scout
