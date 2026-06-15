@@ -26,11 +26,11 @@ STATE = os.path.join(HERE, "..", "data", "risk_state.json")
 
 CFG = {
     "equity": 500.0,        # Webull runner account
-    "risk_pct": 0.05,       # 5% of equity at risk per trade  -> $25
-    "daily_pct": 0.10,      # 10% daily max loss              -> $50
-    "max_pos_pct": 0.60,    # one position's cost <= 60% of equity
-    "max_open": 3,          # max concurrent positions
-    "min_rr": 1.5,          # require >= 1.5R if a target is set
+    "risk_pct": 0.15,       # 15% of equity at risk per trade -> $75 (user-set, aggressive)
+    "daily_pct": 0.30,      # 30% daily max loss -> $150 (raised so a 15% trade fits)
+    "max_pos_pct": 0.90,    # one position's cost <= 90% of equity (scalp needs room)
+    "max_open": 2,          # max concurrent positions
+    "min_rr": 1.2,          # require >= 1.2R (scalps run tighter targets)
 }
 
 

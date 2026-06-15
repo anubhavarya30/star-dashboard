@@ -75,6 +75,13 @@ niche to master. Built:
   Wired into watch_runner triggers so every signal comes pre-sized + approved.
   Philosophy: take risk, but every position sized so a loss is survivable —
   rules are numbers, not caveats.
+  **User-set 2026-06-15:** risk_pct raised 5%->15% ($75/trade), daily_pct 10%->30%
+  ($150/day) so a 15% trade fits, max_pos_pct 90%, min_rr 1.2 (scalps).
+- **Daily Trade Picker** (`engine/daily_trade.py`, `/api/daily_trade`): user wants a
+  trade EVERY day. Picks the best graded setup, sizes it via the risk gate, returns
+  one trade card with a quality grade (A=clean setup, C=forced/low-quality on a flat
+  day — labeled honestly, never refuses). Caveat baked in: delayed data + no broker
+  API, so it's a PLAN to execute on Webull, not an auto-scalp.
 - KEY LESSON surfaced live: forensic scanner returns false "LOW RISK" on micro-caps
   (no yfinance fundamentals) — real risk is in SEC filings. Most days the right
   call is NO TRADE (protect the ~$985: $485 IBKR + $500 Webull options).
