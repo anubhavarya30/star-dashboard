@@ -362,6 +362,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(gex(q.get("sym", ["SPY"])[0].upper()))
             if u.path == "/api/gex_agent":
                 return self._send_json(gex_agent(q.get("sym", ["SPY"])[0].upper()))
+            if u.path == "/api/premarket":
+                p = HERE / "data" / "premarket" / "latest.json"
+                return self._send_json(json.loads(p.read_text()) if p.exists()
+                                       else {"error": "no morning brief yet — runs premarket weekdays"})
             if u.path == "/api/runner_grade":
                 def _rg():
                     import runner_grader as rg

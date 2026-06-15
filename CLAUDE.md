@@ -52,6 +52,24 @@ logs to /tmp/star_gex.log). Manage: `launchctl list | grep gexlogger`,
 `gex_logger.py test SPY` reports the negative-gamma→next-day-downside edge once 20+
 days are logged. User has Webull options ($500) as the eventual execution venue.
 
+**RUNNERS SME track (2026-06-15):** user chose low-float momentum runners as the
+niche to master. Built:
+- `RUNNERS_PLAYBOOK.md` — discipline core (2 setups, hard risk rules: ≤$25/trade,
+  $50 daily max, no sub-$1/nano-caps, never chase; position-size math; dilution).
+- `engine/runner_grader.py` + `/api/runner_grade` — grades live movers by lifecycle
+  (EARLY/PULLBACK-WATCH vs DO-NOT-CHASE vs AVOID-LANDMINE). Extension driven by %
+  already run (a name up 200% is never "early").
+- `engine/watch_runner.py` — live BASKET monitor (5 names), flags Setup B (VWAP
+  reclaim) on any; writes /tmp/star_runner_status.json. Run: `nohup ./venv/bin/
+  python3 engine/watch_runner.py 120 &` (auto-picks watchlist) or pass symbols.
+- **Premarket research routine**: `engine/premarket_research.py` +
+  `scripts/premarket.sh` via **launchd `com.star.premarket` weekdays 7:45am** —
+  grades the morning gappers, writes `data/premarket/<date>.md` + `latest.json`
+  (served at `/api/premarket`). The morning watchlist is ready before the open.
+- KEY LESSON surfaced live: forensic scanner returns false "LOW RISK" on micro-caps
+  (no yfinance fundamentals) — real risk is in SEC filings. Most days the right
+  call is NO TRADE (protect the ~$985: $485 IBKR + $500 Webull options).
+
 **VW-RSI status:** with 2R target + loosened filters, basket PF = 1.05 (marginal,
 name-dependent). Not a robust edge. Next: regime/name filtering or replace signal.
 
