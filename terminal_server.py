@@ -363,6 +363,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/gex_agent":
                 return self._send_json(gex_agent(q.get("sym", ["SPY"])[0].upper()))
             if u.path == "/api/premarket":
+                if q.get("rebuild"):
+                    def _pm():
+                        import premarket_research as pr
+                        return pr.build()
+                    return self._send_json(cached("premarket_build", _pm, ttl=60))
                 p = HERE / "data" / "premarket" / "latest.json"
                 return self._send_json(json.loads(p.read_text()) if p.exists()
                                        else {"error": "no morning brief yet — runs premarket weekdays"})

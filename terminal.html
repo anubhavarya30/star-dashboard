@@ -303,6 +303,18 @@
   .gexagent .vt{font-size:11px;font-weight:800;font-family:var(--sans);padding:3px 9px;border-radius:6px;margin-left:8px}
   .gexagent .dt{font-size:12px;color:var(--muted);font-family:var(--sans);line-height:1.5;margin-top:5px}
 
+  /* morning brief */
+  .bwatch{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+  .bw{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:8px;background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.25)}
+  .bw .sy{font-size:15px;font-weight:700;cursor:pointer;border-bottom:1px dashed rgba(255,166,43,.5)}
+  .bw .dt{font-size:11.5px;color:var(--muted);font-family:var(--sans);line-height:1.5}
+  .vchip{font-size:9px;font-weight:800;font-family:var(--sans);padding:3px 7px;border-radius:5px;white-space:nowrap}
+  .vchip.EW{background:var(--up);color:#08101a}
+  .vchip.PW{background:var(--amber);color:#08101a}
+  .vchip.DNC{background:var(--down);color:#08101a}
+  .vchip.AL{background:#7a2630;color:#ffb4bb}
+  .vchip.NIP,.vchip.ND{background:#2a3140;color:var(--muted)}
+
   @media (max-width:1024px){ .grid{grid-template-columns:1fr} .strip{display:none} .movers{grid-template-columns:1fr} }
   @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
@@ -341,6 +353,10 @@
   <div class="navitem" data-view="gex" tabindex="0" role="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
     <span class="lbl">GEX Radar</span><span class="hint">dealer gamma</span>
+  </div>
+  <div class="navitem" data-view="brief" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+    <span class="lbl">Morning Brief</span><span class="hint">premarket</span>
   </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
@@ -530,6 +546,18 @@
   </div>
 </div>
 
+<!-- ===== MORNING BRIEF VIEW ===== -->
+<div id="view-brief" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">Morning Brief — Premarket Runner Watchlist</span><span class="meta" id="briefTime"></span></div>
+      <div class="run-warn">Auto-generated before the open (weekdays 7:45am) — today's gappers graded against the runner playbook. <b>Watches</b> are the only names that pass the rules; everything else is a chase or a landmine. Always check SEC EDGAR for a recent offering (dilution) before trading.</div>
+      <div style="margin-bottom:14px"><button class="btn" onclick="loadBrief(true)">⟳ Rebuild now</button></div>
+      <div id="briefResult"><div class="empty">Loading morning brief…</div></div>
+    </section>
+  </div>
+</div>
+
 <footer class="foot">
   <b>Charts:</b> TradingView Lightweight Charts &nbsp;·&nbsp; <b>Quotes/Fundamentals:</b> yfinance (~15-min delayed) &nbsp;·&nbsp; <b>Movers:</b> Webull public data &nbsp;·&nbsp; <b>Portfolio:</b> live IBKR TWS &nbsp;·&nbsp; research terminal — not order routing.
 </footer>
@@ -662,6 +690,7 @@ function switchView(name){
   if(name==="forensic" && !fzDone){runForensicSym("NVDA");fzDone=true;}
   if(name==="runners"){loadRunners();}
   if(name==="gex" && !gexDone){runGexSym("SPY");gexDone=true;}
+  if(name==="brief"){loadBrief(false);}
 }
 
 /* ---------- Runner Scanner ---------- */
@@ -786,6 +815,33 @@ async function runGexSym(sym){
     <div class="bth">Gamma by strike (green = vol-suppressing, red = vol-accelerating)</div>
     <div class="gexbars">${bars||'<div class="empty">No strikes.</div>'}</div>
     <div style="font-size:10px;color:var(--faint);font-family:var(--sans);margin-top:12px">${d.assumption}</div>`;
+}
+
+/* ---------- Morning Brief ---------- */
+let briefDone=false;
+const VABBR={"EARLY-WATCH":"EW","PULLBACK-WATCH":"PW","DO-NOT-CHASE":"DNC","AVOID-LANDMINE":"AL","NOT-IN-PLAY":"NIP","NO-DATA":"ND"};
+async function loadBrief(force){
+  if(force)$("briefResult").innerHTML='<div class="empty">Rebuilding the brief from live premarket movers…</div>';
+  let d;try{d=await api(`/api/premarket${force?"?rebuild=1":""}`);}catch(e){$("briefResult").innerHTML='<div class="errline">Brief unavailable.</div>';return;}
+  if(d.error){$("briefResult").innerHTML='<div class="run-warn">'+d.error+'</div>';return;}
+  $("briefTime").textContent=(d.date||"")+(d.generated_at?" · "+new Date(d.generated_at).toLocaleTimeString("en-US",{hour12:false}):"");
+  const watches=(d.top_watches||[]).map(g=>`<div class="bw">
+    <span class="sy" data-sym="${g.symbol}" title="Open ${g.symbol} detail">${g.symbol}</span>
+    <span class="vchip ${VABBR[g.verdict]||'ND'}">${g.verdict}</span>
+    <div class="dt"><b>${g.change_pct}%</b> · float ${g.float_m!=null?g.float_m+'M':'?'} · $${g.price} — ${g.reason}</div></div>`).join("");
+  const rows=(d.graded||[]).map(g=>`<tr>
+    <td class="sym" data-sym="${g.symbol}" style="cursor:pointer">${g.symbol}</td>
+    <td>${g.change_pct!=null?g.change_pct+'%':'—'}</td>
+    <td>${g.float_m!=null?g.float_m+'M':'—'}</td>
+    <td>${g.market_cap_m!=null?'$'+g.market_cap_m+'M':'—'}</td>
+    <td><span class="vchip ${VABBR[g.verdict]||'ND'}">${g.verdict}</span></td>
+    <td class="reason" style="text-align:left">${g.reason||''}</td></tr>`).join("");
+  $("briefResult").innerHTML=`
+    <div class="bth">✅ Watches — only names that pass the rules</div>
+    ${watches||'<div class="empty">None pass premarket. Patience, not chasing.</div>'}
+    <div class="bth">Full board (graded)</div>
+    <table class="bttbl"><thead><tr><th>Sym</th><th>%Chg</th><th>Float</th><th>MktCap</th><th>Verdict</th><th style="text-align:left">Note</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="margin-top:12px;font-size:11px;color:var(--muted);font-family:var(--sans)">Monitor watchlist: <b>${(d.monitor_watchlist||[]).join(", ")||'—'}</b> · Reminder: check SEC EDGAR for a recent S-1/424B5/ATM offering before trading — dilution kills runs.</div>`;
 }
 
 /* ---------- Forensic scanner ---------- */
@@ -920,8 +976,8 @@ setInterval(freshness,1000);
 initCharts();
 loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
 // deep-link: #agents / #pnl open that view directly
-{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex"].includes(h))switchView(h);}
-window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex"].includes(h))switchView(h);});
+{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex","brief"].includes(h))switchView(h);}
+window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex","brief"].includes(h))switchView(h);});
 setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();
   if(document.getElementById("view-agents").classList.contains("active"))loadGexAgent();},30000);
 </script>
