@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STAR — autonomous paper-trading desk.
+     Runs a tick every 15 min (StartInterval=900). The script self-gates to
+     weekday US market hours (8:30-15:00 CT) and no-ops otherwise, so it's safe
+     to leave running. Manages exits + takes the scout's best APPROVED setup.
+     Install:
+       cp scripts/com.star.papertrader.plist ~/Library/LaunchAgents/
+       launchctl bootout gui/$(id -u)/com.star.papertrader 2>/dev/null
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.star.papertrader.plist -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.star.papertrader</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/anubhavarya/star/star-dashboard/scripts/paper_session.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>900</integer>
+    <key>StandardOutPath</key>
+    <string>/tmp/star_paper.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/star_paper.log</string>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
