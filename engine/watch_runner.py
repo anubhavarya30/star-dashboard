@@ -70,6 +70,15 @@ def auto_watchlist(n=5):
     return picks or [r["symbol"] for r in rows][:n]
 
 
+def scout_watchlist(n=5):
+    """Pick the watchlist from the Scout's SOLID shortlist (liquid, sector-confirmed
+    real names) instead of raw micro-cap movers — watch quality, not pumps."""
+    sys.path.insert(0, os.path.dirname(__file__))
+    import scout
+    sl = (scout.scan().get("shortlist") or [])[:n]
+    return [r["symbol"] for r in sl] or auto_watchlist(n)
+
+
 def main(symbols, minutes=120, interval=60):
     end = time.time() + minutes * 60
     with open(LOG, "a") as f:
@@ -95,6 +104,11 @@ def main(symbols, minutes=120, interval=60):
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.isdigit()]
     mins = next((int(a) for a in sys.argv[1:] if a.isdigit()), 120)
-    syms = args if args else auto_watchlist(5)
+    if args and args[0].lower() == "scout":           # source watchlist from the Scout
+        syms = scout_watchlist(5)
+    elif args:
+        syms = args
+    else:
+        syms = auto_watchlist(5)
     print("watching:", syms)
     main(syms, mins)
