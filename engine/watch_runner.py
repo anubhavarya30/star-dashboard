@@ -38,16 +38,38 @@ def snapshot(sym):
     was_below = prev <= vwap
     off_low = (price / lod - 1) * 100 if lod else 0
     off_high = (hod - price) / hod * 100 if hod else 0
-    trigger = bool(was_below and above_vwap and off_low > 1 and (avg_vol == 0 or last_vol > avg_vol))
-    if trigger:
+    vol_ok = (avg_vol == 0 or last_vol > avg_vol)
+    vwap_ext = (price / vwap - 1) * 100 if vwap else 0
+    prior_high = float(h["High"].iloc[:-1].max())          # day high BEFORE this bar
+    recent_low = float(h["Low"].tail(5).min())             # last ~5 bars' low (stop base)
+
+    # Setup A — breakout/continuation: trending (above VWAP), breaks to a new high
+    # on rising volume, and not over-extended (<=8% above VWAP). Catches the push,
+    # not the chase.
+    setup_a = bool(above_vwap and price >= prior_high and vol_ok and vwap_ext <= 8)
+    # Setup B — reclaim off the lows: was below VWAP, reclaims it, holding above LOD.
+    setup_b = bool(was_below and above_vwap and off_low > 1 and vol_ok)
+    trigger = setup_a or setup_b
+    setup_type = "A-breakout" if setup_a else ("B-reclaim" if setup_b else None)
+
+    if setup_a:
+        note = "BREAKOUT — Setup A trigger (new high on volume, above VWAP)"
+    elif setup_b:
         note = "VWAP RECLAIM — Setup B trigger"
     elif above_vwap:
         note = "above VWAP, holding"
     else:
         note = "below VWAP — stand aside"
+
     plan = None
     if trigger:
-        entry = round(price, 2); stop = round(min(vwap, lod) * 0.995, 2)
+        entry = round(price, 2)
+        # Setup A stops under the breakout base (recent low/VWAP, whichever is higher
+        # = tighter); Setup B stops under VWAP/LOD.
+        base = max(vwap, recent_low) if setup_a else min(vwap, lod)
+        stop = round(base * 0.997, 2)
+        if stop >= entry:
+            stop = round(entry * 0.985, 2)
         target = round(entry + 2 * (entry - stop), 2)   # 2R
         try:
             import risk_manager as rm
@@ -58,7 +80,8 @@ def snapshot(sym):
             "price": round(price, 3), "vwap": round(vwap, 3), "hod": round(hod, 2), "lod": round(lod, 2),
             "off_high_pct": round(off_high, 1), "off_low_pct": round(off_low, 1),
             "rel_vol_1m": round(last_vol / avg_vol, 1) if avg_vol else None,
-            "above_vwap": above_vwap, "trigger": trigger, "note": note, "plan": plan}
+            "above_vwap": above_vwap, "trigger": trigger, "setup": setup_type,
+            "note": note, "plan": plan}
 
 
 def auto_watchlist(n=5):
