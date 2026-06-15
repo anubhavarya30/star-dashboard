@@ -380,6 +380,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/risk_status":
                 import risk_manager as rm
                 return self._send_json(rm.status())
+            if u.path == "/api/scout":
+                def _sc():
+                    import scout
+                    return scout.scan()
+                return self._send_json(cached("scout", _sc, ttl=120))
             if u.path == "/api/daily_trade":
                 def _dt():
                     import daily_trade as dt

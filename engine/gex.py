@@ -31,7 +31,8 @@ def _norm_pdf(x):
 
 
 def _bs_gamma(S, K, T, sigma, r=0.04):
-    if S <= 0 or K <= 0 or T <= 0 or sigma <= 0:
+    # NaN-safe: nan<=0 is False, so guard explicitly (x != x is True only for NaN)
+    if any(x != x for x in (S, K, T, sigma)) or S <= 0 or K <= 0 or T <= 0 or sigma <= 0:
         return 0.0
     d1 = (math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * math.sqrt(T))
     return _norm_pdf(d1) / (S * sigma * math.sqrt(T))
@@ -78,6 +79,10 @@ def compute(symbol="SPY", max_expiries=6, strike_pct=0.20):
                     K = float(K); oi = float(oi or 0); iv = float(iv or 0)
                 except Exception:
                     continue
+                # drop NaN rows (yfinance returns NaN IV/OI on illiquid strikes) —
+                # nan<=0 is False, so they'd otherwise slip through and poison the sum
+                if K != K or oi != oi or iv != iv:
+                    continue
                 if not (lo <= K <= hi) or oi <= 0 or iv <= 0:
                     continue
                 rows.append((K, T, iv, oi, is_call))
@@ -89,7 +94,7 @@ def compute(symbol="SPY", max_expiries=6, strike_pct=0.20):
         return {"symbol": symbol.upper(), "spot": round(spot, 2),
                 "error": "options chain had no usable open interest / IV"}
 
-    net_gex = sum(by_strike.values())
+    net_gex = sum(v for v in by_strike.values() if v == v)  # skip any residual NaN
 
     # --- gamma flip: recompute net GEX across a price grid, find zero crossing ---
     def net_at(S):
