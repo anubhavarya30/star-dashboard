@@ -362,6 +362,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(gex(q.get("sym", ["SPY"])[0].upper()))
             if u.path == "/api/gex_agent":
                 return self._send_json(gex_agent(q.get("sym", ["SPY"])[0].upper()))
+            if u.path == "/api/runner_grade":
+                def _rg():
+                    import runner_grader as rg
+                    s = q.get("sym", [None])[0]
+                    return rg.grade(s.upper()) if s else rg.grade_movers()
+                return self._send_json(cached("runner_grade:" + (q.get("sym", [""])[0] or "movers"), _rg, ttl=60))
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":
