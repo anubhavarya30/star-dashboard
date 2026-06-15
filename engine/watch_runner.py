@@ -40,12 +40,14 @@ def snapshot(sym):
     off_high = (hod - price) / hod * 100 if hod else 0
     vol_ok = (avg_vol == 0 or last_vol > avg_vol)
     vwap_ext = (price / vwap - 1) * 100 if vwap else 0
-    prior_high = float(h["High"].iloc[:-1].max())          # day high BEFORE this bar
+    # ROLLING breakout: break the high of the prior ~15 bars (15 min), NOT the
+    # full-day high. Catches continuation pushes on a grind-up; the full-day-high
+    # version was razor-thin on slow grinders and missed every breakout today.
+    prior_high = float(h["High"].iloc[-16:-1].max()) if len(h) > 16 else float(h["High"].iloc[:-1].max())
     recent_low = float(h["Low"].tail(5).min())             # last ~5 bars' low (stop base)
 
-    # Setup A — breakout/continuation: trending (above VWAP), breaks to a new high
-    # on rising volume, and not over-extended (<=8% above VWAP). Catches the push,
-    # not the chase.
+    # Setup A — breakout/continuation: trending (above VWAP), breaks the prior
+    # 15-bar high on rising volume, not over-extended (<=8% above VWAP).
     setup_a = bool(above_vwap and price >= prior_high and vol_ok and vwap_ext <= 8)
     # Setup B — reclaim off the lows: was below VWAP, reclaims it, holding above LOD.
     setup_b = bool(was_below and above_vwap and off_low > 1 and vol_ok)
