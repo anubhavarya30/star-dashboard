@@ -48,9 +48,12 @@ def snapshot(sym):
     plan = None
     if trigger:
         entry = round(price, 2); stop = round(min(vwap, lod) * 0.995, 2)
-        rps = round(entry - stop, 2); sh = math.floor(25 / rps) if rps > 0 else 0
-        plan = {"entry": entry, "stop": stop, "risk_per_share": rps, "shares": sh,
-                "cost": round(sh * entry, 2), "target_2R": round(entry + 2 * rps, 2)}
+        target = round(entry + 2 * (entry - stop), 2)   # 2R
+        try:
+            import risk_manager as rm
+            plan = rm.pre_trade_check(sym, entry, stop, target)   # brain's risk gate sizes/approves it
+        except Exception as e:
+            plan = {"error": f"risk check failed: {e}"}
     return {"symbol": sym.upper(), "ts": datetime.now().strftime("%H:%M:%S"),
             "price": round(price, 3), "vwap": round(vwap, 3), "hod": round(hod, 2), "lod": round(lod, 2),
             "off_high_pct": round(off_high, 1), "off_low_pct": round(off_low, 1),

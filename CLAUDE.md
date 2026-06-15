@@ -66,6 +66,15 @@ niche to master. Built:
   `scripts/premarket.sh` via **launchd `com.star.premarket` weekdays 7:45am** —
   grades the morning gappers, writes `data/premarket/<date>.md` + `latest.json`
   (served at `/api/premarket`). The morning watchlist is ready before the open.
+- **Risk Manager attached to the brain** (`engine/risk_manager.py`): hard pre-trade
+  gate (sizes by 5% risk/trade=$25, caps cost at 60% equity, enforces daily max
+  loss $50 and total open-risk budget across trades, min 1.5 R:R) + post-trade
+  check (R-multiple, trail/scale/exit actions) + daily P&L state in
+  data/risk_state.json (resets each day; halts trading when daily limit hit).
+  Endpoints `/api/risk_check?sym=&entry=&stop=&target=` and `/api/risk_status`.
+  Wired into watch_runner triggers so every signal comes pre-sized + approved.
+  Philosophy: take risk, but every position sized so a loss is survivable —
+  rules are numbers, not caveats.
 - KEY LESSON surfaced live: forensic scanner returns false "LOW RISK" on micro-caps
   (no yfinance fundamentals) — real risk is in SEC filings. Most days the right
   call is NO TRADE (protect the ~$985: $485 IBKR + $500 Webull options).

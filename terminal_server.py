@@ -371,6 +371,15 @@ class Handler(BaseHTTPRequestHandler):
                 p = HERE / "data" / "premarket" / "latest.json"
                 return self._send_json(json.loads(p.read_text()) if p.exists()
                                        else {"error": "no morning brief yet — runs premarket weekdays"})
+            if u.path == "/api/risk_check":
+                import risk_manager as rm
+                t = q.get("target", [None])[0]
+                return self._send_json(rm.pre_trade_check(
+                    sym, float(q.get("entry", ["0"])[0]), float(q.get("stop", ["0"])[0]),
+                    float(t) if t else None))
+            if u.path == "/api/risk_status":
+                import risk_manager as rm
+                return self._send_json(rm.status())
             if u.path == "/api/runner_grade":
                 def _rg():
                     import runner_grader as rg
