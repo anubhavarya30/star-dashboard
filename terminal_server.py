@@ -380,6 +380,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/risk_status":
                 import risk_manager as rm
                 return self._send_json(rm.status())
+            if u.path == "/api/paper_results":
+                import csv as _csv
+                p = HERE / "data" / "paper_results.csv"
+                rows = list(_csv.DictReader(p.open())) if p.exists() else []
+                return self._send_json({"results": rows})
             if u.path == "/api/options_play":
                 def _op():
                     import options_play as op

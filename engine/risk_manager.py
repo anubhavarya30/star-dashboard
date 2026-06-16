@@ -43,8 +43,9 @@ def _load():
         s = json.load(open(STATE))
     except Exception:
         s = {}
-    if s.get("date") != _today():               # new day -> reset realized P&L
-        s = {"date": _today(), "realized_pnl": 0.0, "open": [], "closed": []}
+    if s.get("date") != _today():               # new day -> reset realized P&L,
+        s = {"date": _today(), "realized_pnl": 0.0,  # but CARRY OVER open positions
+             "open": s.get("open", []), "closed": []}
         _save(s)
     return s
 

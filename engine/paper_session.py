@@ -95,6 +95,41 @@ def maybe_enter():
          f"risk ${plan['dollar_risk']} | {pick.get('thesis','')[:60]}")
 
 
+RESULTS = os.path.join(HERE, "..", "data", "paper_results.csv")
+RES_FIELDS = ["date", "trades", "wins", "losses", "win_rate", "net_pnl", "equity_end"]
+
+
+def log_daily_summary():
+    """Append today's result to data/paper_results.csv (idempotent per date).
+    Builds the equity curve: equity_end = prior equity_end + today's net."""
+    import csv
+    import risk_manager as rm
+    s = rm._load()
+    today = s["date"]
+    rows = []
+    if os.path.exists(RESULTS):
+        with open(RESULTS) as f:
+            rows = list(csv.DictReader(f))
+    if any(r["date"] == today for r in rows):
+        return None                                  # already logged
+    closed = s.get("closed", [])
+    wins = sum(1 for t in closed if t.get("pnl", 0) > 0)
+    losses = sum(1 for t in closed if t.get("pnl", 0) <= 0)
+    net = round(s.get("realized_pnl", 0.0), 2)
+    prev_eq = float(rows[-1]["equity_end"]) if rows else rm.CFG["equity"]
+    row = {"date": today, "trades": len(closed), "wins": wins, "losses": losses,
+           "win_rate": round(wins / len(closed) * 100, 1) if closed else 0,
+           "net_pnl": net, "equity_end": round(prev_eq + net, 2)}
+    os.makedirs(os.path.dirname(RESULTS), exist_ok=True)
+    with open(RESULTS, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=RES_FIELDS)
+        if not rows:
+            w.writeheader()
+        w.writerow(row)
+    return _log(f"DAILY SUMMARY {today}: {row['trades']} trades, {wins}W/{losses}L, "
+                f"net ${net}, equity ${row['equity_end']}")
+
+
 def tick():
     now = _now_ct()
     phase = _market_phase(now)
@@ -103,10 +138,15 @@ def tick():
     manage_open(force_close=(phase == "eod"))
     if phase == "open":
         maybe_enter()
+    if phase == "eod":
+        log_daily_summary()                          # write the day's result + equity curve
     import risk_manager as rm
     st = rm.status()
     return _log(f"tick done [{phase}] | open {len(st['open_positions'])} | realized ${st['realized_pnl']} | halted {st['halted']}")
 
 
 if __name__ == "__main__":
-    print(tick())
+    if len(sys.argv) > 1 and sys.argv[1] == "summary":
+        print(log_daily_summary() or "summary already logged for today")
+    else:
+        print(tick())
