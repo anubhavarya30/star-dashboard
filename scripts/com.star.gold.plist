@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>Label</key><string>com.star.gold</string>
+<key>ProgramArguments</key><array><string>/bin/bash</string><string>/Users/anubhavarya/star/star-dashboard/scripts/gold.sh</string></array>
+<key>StartInterval</key><integer>1200</integer>
+<key>StandardOutPath</key><string>/tmp/star_gold.log</string>
+<key>StandardErrorPath</key><string>/tmp/star_gold.log</string>
+<key>RunAtLoad</key><false/>
+</dict></plist>

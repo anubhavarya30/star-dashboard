@@ -397,6 +397,11 @@ class Handler(BaseHTTPRequestHandler):
                 st = rm.status()
                 return self._send_json({"closed": closed, "open": st["open_positions"],
                                         "realized_today": st["realized_pnl"]})
+            if u.path == "/api/gold":
+                def _g():
+                    import gold
+                    return gold.stats()
+                return self._send_json(cached("gold", _g, ttl=60))
             if u.path == "/api/breakdown":
                 def _bd():
                     import breakdown_scan as bd
