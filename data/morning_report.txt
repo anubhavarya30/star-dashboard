@@ -1,0 +1,10 @@
+===== STAR MORNING REPORT: Tue Jun 16 17:11:13 CDT 2026 =====
+--- IBKR paper readiness ---
+  IBKR: CONNECTED DUQ923304 (paper) can_auto_trade=True
+--- premarket watchlist ---
+STAR Morning Brief 2026-06-16: 8 graded, 0 watches, monitor: []
+--- gap + catalyst ---
+0 gappers:
+--- desk status ---
+  open 2 | realized today $0 | halted False | desk fires at 8:30 CT
+===== end report =====
