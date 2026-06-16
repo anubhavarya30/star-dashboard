@@ -380,6 +380,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/risk_status":
                 import risk_manager as rm
                 return self._send_json(rm.status())
+            if u.path == "/api/premarket_gap":
+                def _pg():
+                    import premarket_gap as pg
+                    return pg.scan()
+                return self._send_json(cached("premarket_gap", _pg, ttl=120))
             if u.path == "/api/paper_results":
                 import csv as _csv
                 p = HERE / "data" / "paper_results.csv"
