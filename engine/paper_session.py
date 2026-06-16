@@ -55,9 +55,29 @@ def _log(msg):
     return line
 
 
+def _broker():
+    """IBKR paper status — only auto-trades a verified DU (paper) account."""
+    try:
+        import ibkr_broker as b
+        return b.status()
+    except Exception as e:
+        return {"can_auto_trade": False, "error": str(e)}
+
+
+def _place(sym, qty, action):
+    try:
+        import ibkr_broker as b
+        return b.place_order(sym, abs(int(qty)), action)
+    except Exception as e:
+        return {"ok": False, "filled": 0, "error": str(e)}
+
+
 def manage_open(force_close=False):
     import risk_manager as rm
     s = rm._load()
+    if not s["open"]:
+        return
+    bs = _broker()
     for p in list(s["open"]):
         px = _price(p["symbol"])
         if px is None:
@@ -70,8 +90,15 @@ def manage_open(force_close=False):
         elif p.get("target") and px >= p["target"]:
             exit_px, reason = p["target"], "target hit"
         if exit_px is not None:
-            r = rm.record_exit(p["symbol"], exit_px)
-            _log(f"EXIT {p['symbol']} @ ${exit_px} ({reason}) pnl ${r.get('pnl')} | realized today ${r.get('realized_today')}")
+            via = "sim"
+            if bs.get("can_auto_trade"):                       # close via real IBKR paper
+                r = _place(p["symbol"], p["shares"], "SELL")
+                if r.get("filled") and r.get("avg_fill"):
+                    exit_px, via = round(float(r["avg_fill"]), 2), "ibkr"
+                else:
+                    _log(f"IBKR sell not filled {p['symbol']} ({r.get('status') or r.get('error')}) — marking exit {exit_px} (sim)")
+            r2 = rm.record_exit(p["symbol"], exit_px)
+            _log(f"EXIT[{via}] {p['symbol']} @ ${exit_px} ({reason}) pnl ${r2.get('pnl')} | realized today ${r2.get('realized_today')}")
 
 
 def maybe_enter():
@@ -90,9 +117,18 @@ def maybe_enter():
     sym = pick["symbol"]
     if sym in open_syms or plan.get("shares", 0) < 1:
         return
-    rm.record_entry(sym, plan["entry"], plan["stop"], plan["shares"], plan["target"])
-    _log(f"ENTER {sym} {plan['shares']}sh @ ${plan['entry']} stop ${plan['stop']} tgt ${plan['target']} "
-         f"risk ${plan['dollar_risk']} | {pick.get('thesis','')[:60]}")
+    entry_px, via = plan["entry"], "sim"
+    bs = _broker()
+    if bs.get("can_auto_trade"):                               # enter via real IBKR paper
+        r = _place(sym, plan["shares"], "BUY")
+        if r.get("filled") and r.get("avg_fill"):
+            entry_px, via = round(float(r["avg_fill"]), 2), "ibkr"
+        else:                                                  # IBKR mode on but no fill -> don't fake a sim entry
+            _log(f"IBKR buy not filled {sym} ({r.get('status') or r.get('error')}) — no entry this tick")
+            return
+    rm.record_entry(sym, entry_px, plan["stop"], plan["shares"], plan["target"])
+    _log(f"ENTER[{via}] {sym} {plan['shares']}sh @ ${entry_px} stop ${plan['stop']} tgt ${plan['target']} "
+         f"risk ${plan['dollar_risk']} | {pick.get('thesis','')[:55]}")
 
 
 RESULTS = os.path.join(HERE, "..", "data", "paper_results.csv")
