@@ -1,7 +1,130 @@
 {
   "date": "2026-06-16",
-  "generated_at": "2026-06-16T08:24:37.470882-05:00",
-  "graded": [],
-  "top_watches": [],
-  "monitor_watchlist": []
+  "generated_at": "2026-06-16T09:26:26.503532-05:00",
+  "graded": [
+    {
+      "symbol": "SLBT",
+      "verdict": "EARLY-WATCH",
+      "reason": "Up 51%, mid-move and not pinned at highs \u2014 cautious Setup A: only on a clean opening-range/PM-high break with volume.",
+      "price": 11.135,
+      "change_pct": 51.5,
+      "rel_volume": null,
+      "pct_off_high": 23.2,
+      "range_position_pct": 27.0,
+      "float_m": null,
+      "market_cap_m": null,
+      "actionable": true
+    },
+    {
+      "symbol": "LPRO",
+      "verdict": "DO-NOT-CHASE",
+      "reason": "Up 49% and near HOD \u2014 extended. Wait for a real pullback (Setup B).",
+      "price": 3.115,
+      "change_pct": 49.0,
+      "rel_volume": 5.7,
+      "pct_off_high": 0.5,
+      "range_position_pct": 25.0,
+      "float_m": 95.3,
+      "market_cap_m": 368.0,
+      "actionable": false
+    },
+    {
+      "symbol": "HONAV",
+      "verdict": "NOT-IN-PLAY",
+      "reason": "Up 49%, rel vol 2.3x \u2014 not enough to matter today.",
+      "price": 297.5,
+      "change_pct": 48.8,
+      "rel_volume": 2.3,
+      "pct_off_high": 0.0,
+      "range_position_pct": null,
+      "float_m": null,
+      "market_cap_m": null,
+      "actionable": false
+    },
+    {
+      "symbol": "CCTG",
+      "verdict": "AVOID-LANDMINE",
+      "reason": "Nano-cap ($6M) \u2014 thin, easily manipulated.",
+      "price": 1.5399,
+      "change_pct": 127.1,
+      "rel_volume": 24.3,
+      "pct_off_high": 26.3,
+      "range_position_pct": 56.0,
+      "float_m": 1.8,
+      "market_cap_m": 6.0,
+      "actionable": false
+    },
+    {
+      "symbol": "SUGP",
+      "verdict": "AVOID-LANDMINE",
+      "reason": "Nano-cap ($10M) \u2014 thin, easily manipulated.",
+      "price": 1.7893,
+      "change_pct": 101.0,
+      "rel_volume": 151.0,
+      "pct_off_high": 29.8,
+      "range_position_pct": 15.0,
+      "float_m": 0.5,
+      "market_cap_m": 10.0,
+      "actionable": false
+    },
+    {
+      "symbol": "OBAI",
+      "verdict": "AVOID-LANDMINE",
+      "reason": "Sub-$1 ($0.876) \u2014 delisting/manipulation zone.",
+      "price": 0.8764,
+      "change_pct": 67.0,
+      "rel_volume": 318.3,
+      "pct_off_high": 31.5,
+      "range_position_pct": 10.0,
+      "float_m": 18.2,
+      "market_cap_m": 21.0,
+      "actionable": false
+    },
+    {
+      "symbol": "TDIC",
+      "verdict": "AVOID-LANDMINE",
+      "reason": "Nano-cap ($13M) \u2014 thin, easily manipulated.",
+      "price": 8.7501,
+      "change_pct": 59.4,
+      "rel_volume": 17.1,
+      "pct_off_high": 16.7,
+      "range_position_pct": 28.0,
+      "float_m": 0.2,
+      "market_cap_m": 13.0,
+      "actionable": false
+    },
+    {
+      "symbol": "IVDA",
+      "verdict": "AVOID-LANDMINE",
+      "reason": "Sub-$1 ($0.643) \u2014 delisting/manipulation zone.",
+      "price": 0.6432,
+      "change_pct": 46.7,
+      "rel_volume": 366.5,
+      "pct_off_high": 1.0,
+      "range_position_pct": 97.0,
+      "float_m": 10.7,
+      "market_cap_m": 7.0,
+      "actionable": false
+    }
+  ],
+  "top_watches": [
+    {
+      "symbol": "SLBT",
+      "verdict": "EARLY-WATCH",
+      "reason": "Up 51%, mid-move and not pinned at highs \u2014 cautious Setup A: only on a clean opening-range/PM-high break with volume.",
+      "price": 11.135,
+      "change_pct": 51.5,
+      "rel_volume": null,
+      "pct_off_high": 23.2,
+      "range_position_pct": 27.0,
+      "float_m": null,
+      "market_cap_m": null,
+      "actionable": true
+    }
+  ],
+  "monitor_watchlist": [
+    "SLBT",
+    "LPRO",
+    "HONAV"
+  ]
 }
