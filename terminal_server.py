@@ -420,6 +420,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(cached("runner_grade:" + (q.get("sym", [""])[0] or "movers"), _rg, ttl=60))
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
+            if u.path == "/api/ibkr_broker":
+                def _ib():
+                    import ibkr_broker as b
+                    return b.status()
+                return self._send_json(cached("ibkr_broker", _ib, ttl=30))
             if u.path == "/api/round_trips":
                 return self._send_json({"round_trips": db.round_trips(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":
