@@ -172,7 +172,14 @@ def record_exit(symbol, exit_price):
            "closed_at": closed_at, "duration_min": dur}
     s["closed"].append(rec)
     _save(s)
-    _append_trade(rec)                       # permanent trade history
+    _append_trade(rec)                       # permanent CSV history
+    try:                                     # + durable DB for analysis
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(HERE, ".."))
+        import db
+        db.record_paper_trade({**rec, "source": "stock", "dir": "LONG"})
+    except Exception:
+        pass
     return {"symbol": symbol.upper(), "pnl": pnl, "realized_today": s["realized_pnl"]}
 
 

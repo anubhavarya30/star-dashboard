@@ -116,6 +116,13 @@ def _append(rec):
         if new:
             w.writeheader()
         w.writerow({k: rec.get(k) for k in RES_FIELDS})
+    try:                                      # + durable DB for analysis
+        import sys
+        sys.path.insert(0, os.path.join(HERE, ".."))
+        import db
+        db.record_paper_trade({**rec, "source": "gold", "symbol": SYM})
+    except Exception:
+        pass
 
 
 def stats():

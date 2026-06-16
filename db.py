@@ -145,6 +145,58 @@ def trades(limit: int = 200):
     return [dict(r) for r in rows]
 
 
+def _ensure_paper_table(c):
+    c.execute("""CREATE TABLE IF NOT EXISTS paper_trades(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, symbol TEXT, dir TEXT,
+        shares REAL, entry REAL, exit REAL, stop REAL, target REAL,
+        pnl REAL, pnl_pct REAL, r_mult REAL, opened_at TEXT, closed_at TEXT,
+        duration_min REAL, recorded_at TEXT)""")
+
+
+def record_paper_trade(rec: dict):
+    """Persist one closed paper/gold trade to SQLite for durable analysis."""
+    with _conn() as c:
+        _ensure_paper_table(c)
+        c.execute(
+            "INSERT INTO paper_trades(source,symbol,dir,shares,entry,exit,stop,target,"
+            "pnl,pnl_pct,r_mult,opened_at,closed_at,duration_min,recorded_at)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (rec.get("source", "stock"), rec.get("symbol"), rec.get("dir", "LONG"),
+             rec.get("shares"), rec.get("entry"), rec.get("exit"), rec.get("stop"),
+             rec.get("target"), rec.get("pnl"), rec.get("pnl_pct"), rec.get("r_mult"),
+             rec.get("opened_at"), rec.get("closed_at"), rec.get("duration_min"), _now()),
+        )
+
+
+def paper_trades_all(limit: int = 500, source: str = None):
+    with _conn() as c:
+        _ensure_paper_table(c)
+        if source:
+            rows = c.execute("SELECT * FROM paper_trades WHERE source=? ORDER BY closed_at DESC LIMIT ?",
+                             (source, int(limit))).fetchall()
+        else:
+            rows = c.execute("SELECT * FROM paper_trades ORDER BY closed_at DESC LIMIT ?",
+                             (int(limit),)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def paper_stats():
+    """Aggregate analysis across all persisted paper trades, by source."""
+    rows = paper_trades_all(5000)
+    out = {}
+    for r in rows:
+        g = out.setdefault(r["source"] or "stock",
+                           {"trades": 0, "wins": 0, "pnl": 0.0, "r": 0.0})
+        g["trades"] += 1
+        g["wins"] += 1 if (r.get("pnl") or 0) > 0 or (r.get("r_mult") or 0) > 0 else 0
+        g["pnl"] = round(g["pnl"] + (r.get("pnl") or 0), 2)
+        g["r"] = round(g["r"] + (r.get("r_mult") or 0), 2)
+    for g in out.values():
+        g["win_rate"] = round(g["wins"] / g["trades"] * 100, 1) if g["trades"] else 0
+        g["expectancy_r"] = round(g["r"] / g["trades"], 2) if g["trades"] else 0
+    return out
+
+
 def round_trips(limit: int = 200):
     """Pair real IBKR fills (BOT->SLD, FIFO per symbol) into round-trip trades
     with entry time, exit time, and HOLD DURATION — the real-trading equivalent of

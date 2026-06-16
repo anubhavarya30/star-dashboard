@@ -397,6 +397,9 @@ class Handler(BaseHTTPRequestHandler):
                 st = rm.status()
                 return self._send_json({"closed": closed, "open": st["open_positions"],
                                         "realized_today": st["realized_pnl"]})
+            if u.path == "/api/all_trades":
+                return self._send_json({"trades": db.paper_trades_all(int(q.get("limit",["500"])[0])),
+                                        "stats": db.paper_stats()})
             if u.path == "/api/gold":
                 def _g():
                     import gold
