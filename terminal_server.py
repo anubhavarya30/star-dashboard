@@ -390,6 +390,13 @@ class Handler(BaseHTTPRequestHandler):
                 p = HERE / "data" / "paper_results.csv"
                 rows = list(_csv.DictReader(p.open())) if p.exists() else []
                 return self._send_json({"results": rows})
+            if u.path == "/api/paper_trades":
+                import csv as _csv, risk_manager as rm
+                p = HERE / "data" / "paper_trades.csv"
+                closed = list(_csv.DictReader(p.open())) if p.exists() else []
+                st = rm.status()
+                return self._send_json({"closed": closed, "open": st["open_positions"],
+                                        "realized_today": st["realized_pnl"]})
             if u.path == "/api/options_play":
                 def _op():
                     import options_play as op

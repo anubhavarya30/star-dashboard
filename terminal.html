@@ -358,6 +358,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
     <span class="lbl">Morning Brief</span><span class="hint">premarket</span>
   </div>
+  <div class="navitem" data-view="paper" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-6 3 4 4-7"/></svg>
+    <span class="lbl">Paper Trading</span><span class="hint">P&amp;L history</span>
+  </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
 
@@ -558,6 +562,18 @@
   </div>
 </div>
 
+<!-- ===== PAPER TRADING VIEW ===== -->
+<div id="view-paper" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">Paper Trading — P&amp;L History</span><span class="meta" id="paperTime"></span></div>
+      <div class="run-warn" style="background:rgba(124,159,255,.08);border-color:rgba(124,159,255,.25);color:#bcd">
+        Autonomous paper desk — real entries/exits the system takes, tracked to a virtual $500. Delayed-data fills, so P&amp;L is indicative. This is how we learn if STAR has a real edge before risking money.</div>
+      <div id="paperResult"><div class="empty">Loading paper-trading history…</div></div>
+    </section>
+  </div>
+</div>
+
 <footer class="foot">
   <b>Charts:</b> TradingView Lightweight Charts &nbsp;·&nbsp; <b>Quotes/Fundamentals:</b> yfinance (~15-min delayed) &nbsp;·&nbsp; <b>Movers:</b> Webull public data &nbsp;·&nbsp; <b>Portfolio:</b> live IBKR TWS &nbsp;·&nbsp; research terminal — not order routing.
 </footer>
@@ -691,6 +707,7 @@ function switchView(name){
   if(name==="runners"){loadRunners();}
   if(name==="gex" && !gexDone){runGexSym("SPY");gexDone=true;}
   if(name==="brief"){loadBrief(false);}
+  if(name==="paper"){loadPaper();}
 }
 
 /* ---------- Runner Scanner ---------- */
@@ -844,6 +861,42 @@ async function loadBrief(force){
     <div style="margin-top:12px;font-size:11px;color:var(--muted);font-family:var(--sans)">Monitor watchlist: <b>${(d.monitor_watchlist||[]).join(", ")||'—'}</b> · Reminder: check SEC EDGAR for a recent S-1/424B5/ATM offering before trading — dilution kills runs.</div>`;
 }
 
+/* ---------- Paper Trading ---------- */
+async function loadPaper(){
+  let t,res;
+  try{t=await api(`/api/paper_trades`);res=await api(`/api/paper_results`);}catch(e){$("paperResult").innerHTML='<div class="errline">Paper data unavailable.</div>';return;}
+  $("paperTime").textContent="updated "+new Date().toLocaleTimeString("en-US",{hour12:false});
+  const days=res.results||[];
+  const eq=days.length?parseFloat(days[days.length-1].equity_end):500;
+  const totalNet=days.reduce((a,r)=>a+parseFloat(r.net_pnl||0),0);
+  const closed=t.closed||[], open=t.open||[];
+  const wins=closed.filter(c=>parseFloat(c.pnl)>0).length;
+  const wr=closed.length?Math.round(wins/closed.length*100):0;
+  // summary cards
+  const cards=[
+    ["Equity","$"+fmtN(eq), eq>=500?'up':'down'],
+    ["All-time P&L",(totalNet>=0?'+':'')+"$"+fmtN(totalNet),cls(totalNet)],
+    ["Realized today",(t.realized_today>=0?'+':'')+"$"+fmtN(t.realized_today),cls(t.realized_today)],
+    ["Closed trades",closed.length+"",''],
+    ["Win rate",wr+"%",''],
+    ["Open now",open.length+"",''],
+  ].map(([k,v,c])=>`<div class="btm"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
+  // open positions
+  const openRows=open.length?open.map(p=>`<tr><td class="sym" data-sym="${p.symbol}" style="cursor:pointer">${p.symbol}</td><td>${p.shares}</td><td>${fmtN(p.entry)}</td><td>${fmtN(p.stop)}</td><td>${fmtN(p.target)}</td></tr>`).join(""):'<tr><td colspan="5" class="empty">No open positions</td></tr>';
+  // closed trades (most recent first)
+  const closedRows=closed.length?closed.slice().reverse().map(c=>{const p=parseFloat(c.pnl);return `<tr><td style="text-align:left;color:var(--muted);font-size:11px">${(c.closed_at||'').slice(0,16).replace('T',' ')}</td><td class="sym">${c.symbol}</td><td>${c.shares}</td><td>${fmtN(c.entry)}</td><td>${fmtN(c.exit)}</td><td class="${cls(p)}">${p>=0?'+':''}${fmtN(p)}</td><td class="${cls(p)}">${pct(parseFloat(c.pnl_pct))}</td></tr>`;}).join(""):'<tr><td colspan="7" class="empty">No closed trades yet — exits appear here as the desk banks/cuts positions.</td></tr>';
+  // daily equity curve table
+  const dayRows=days.length?days.slice().reverse().map(r=>{const n=parseFloat(r.net_pnl);return `<tr><td style="text-align:left">${r.date}</td><td>${r.trades}</td><td>${r.wins}W/${r.losses}L</td><td class="${cls(n)}">${n>=0?'+':''}${fmtN(n)}</td><td>$${fmtN(parseFloat(r.equity_end))}</td></tr>`;}).join(""):'<tr><td colspan="5" class="empty">No days logged yet</td></tr>';
+  $("paperResult").innerHTML=`
+    <div class="btmetrics">${cards}</div>
+    <div class="bth">Open positions</div>
+    <table class="bttbl"><thead><tr><th>Sym</th><th>Sh</th><th>Entry</th><th>Stop</th><th>Target</th></tr></thead><tbody>${openRows}</tbody></table>
+    <div class="bth">Closed trades (history)</div>
+    <table class="bttbl"><thead><tr><th style="text-align:left">Closed</th><th>Sym</th><th>Sh</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>%</th></tr></thead><tbody>${closedRows}</tbody></table>
+    <div class="bth">Daily history (equity curve)</div>
+    <table class="bttbl"><thead><tr><th style="text-align:left">Date</th><th>Trades</th><th>W/L</th><th>Net</th><th>Equity</th></tr></thead><tbody>${dayRows}</tbody></table>`;
+}
+
 /* ---------- Forensic scanner ---------- */
 let fzDone=false;
 function runForensic(e){e.preventDefault();const v=$("fzInput").value.trim().toUpperCase();if(v)runForensicSym(v);}
@@ -976,8 +1029,8 @@ setInterval(freshness,1000);
 initCharts();
 loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
 // deep-link: #agents / #pnl open that view directly
-{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex","brief"].includes(h))switchView(h);}
-window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex","brief"].includes(h))switchView(h);});
+{const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex","brief","paper"].includes(h))switchView(h);}
+window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex","brief","paper"].includes(h))switchView(h);});
 setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();
   if(document.getElementById("view-agents").classList.contains("active"))loadGexAgent();},30000);
 </script>

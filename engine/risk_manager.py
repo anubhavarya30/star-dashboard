@@ -134,6 +134,22 @@ def record_entry(symbol, entry, stop, shares, target=None):
     _save(s); return s
 
 
+TRADES_CSV = os.path.join(HERE, "..", "data", "paper_trades.csv")
+TRADE_FIELDS = ["closed_at", "symbol", "shares", "entry", "exit", "stop", "target", "pnl", "pnl_pct"]
+
+
+def _append_trade(rec):
+    """Durably log every closed trade (survives the daily reset)."""
+    import csv
+    new = not os.path.exists(TRADES_CSV)
+    os.makedirs(os.path.dirname(TRADES_CSV), exist_ok=True)
+    with open(TRADES_CSV, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=TRADE_FIELDS)
+        if new:
+            w.writeheader()
+        w.writerow({k: rec.get(k) for k in TRADE_FIELDS})
+
+
 def record_exit(symbol, exit_price):
     s = _load(); hit = None
     for p in s["open"]:
@@ -144,8 +160,13 @@ def record_exit(symbol, exit_price):
     pnl = round((exit_price - hit["entry"]) * hit["shares"], 2)
     s["open"].remove(hit)
     s["realized_pnl"] = round(s["realized_pnl"] + pnl, 2)
-    s["closed"].append({**hit, "exit": exit_price, "pnl": pnl, "closed_at": datetime.now().isoformat()})
-    _save(s); return {"symbol": symbol.upper(), "pnl": pnl, "realized_today": s["realized_pnl"]}
+    rec = {**hit, "exit": exit_price, "pnl": pnl,
+           "pnl_pct": round((exit_price / hit["entry"] - 1) * 100, 2),
+           "closed_at": datetime.now().isoformat()}
+    s["closed"].append(rec)
+    _save(s)
+    _append_trade(rec)                       # permanent trade history
+    return {"symbol": symbol.upper(), "pnl": pnl, "realized_today": s["realized_pnl"]}
 
 
 def post_trade_check(symbol, current_price):
