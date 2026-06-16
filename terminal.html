@@ -881,18 +881,22 @@ async function loadPaper(){
     ["Win rate",wr+"%",''],
     ["Open now",open.length+"",''],
   ].map(([k,v,c])=>`<div class="btm"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
-  // open positions
-  const openRows=open.length?open.map(p=>`<tr><td class="sym" data-sym="${p.symbol}" style="cursor:pointer">${p.symbol}</td><td>${p.shares}</td><td>${fmtN(p.entry)}</td><td>${fmtN(p.stop)}</td><td>${fmtN(p.target)}</td></tr>`).join(""):'<tr><td colspan="5" class="empty">No open positions</td></tr>';
-  // closed trades (most recent first)
-  const closedRows=closed.length?closed.slice().reverse().map(c=>{const p=parseFloat(c.pnl);return `<tr><td style="text-align:left;color:var(--muted);font-size:11px">${(c.closed_at||'').slice(0,16).replace('T',' ')}</td><td class="sym">${c.symbol}</td><td>${c.shares}</td><td>${fmtN(c.entry)}</td><td>${fmtN(c.exit)}</td><td class="${cls(p)}">${p>=0?'+':''}${fmtN(p)}</td><td class="${cls(p)}">${pct(parseFloat(c.pnl_pct))}</td></tr>`;}).join(""):'<tr><td colspan="7" class="empty">No closed trades yet — exits appear here as the desk banks/cuts positions.</td></tr>';
+  // timing helpers
+  const fmtDur=m=>{if(m==null||isNaN(m))return'—';m=Math.round(m);if(m<60)return m+'m';return Math.floor(m/60)+'h'+(m%60)+'m';};
+  const minsSince=iso=>{try{return (Date.now()-new Date(iso).getTime())/60000;}catch(e){return null;}};
+  const hhmm=iso=>{try{return new Date(iso).toLocaleTimeString("en-US",{hour12:false}).slice(0,5);}catch(e){return'—';}};
+  // open positions (with entry time + live time-in-trade)
+  const openRows=open.length?open.map(p=>`<tr><td class="sym" data-sym="${p.symbol}" style="cursor:pointer">${p.symbol}</td><td>${p.shares}</td><td>${fmtN(p.entry)}</td><td>${fmtN(p.stop)}</td><td>${fmtN(p.target)}</td><td style="color:var(--muted);font-size:11px">${hhmm(p.opened_at)}</td><td class="accent">${fmtDur(minsSince(p.opened_at))}</td></tr>`).join(""):'<tr><td colspan="7" class="empty">No open positions</td></tr>';
+  // closed trades (most recent first) with entry time + total time in trade
+  const closedRows=closed.length?closed.slice().reverse().map(c=>{const p=parseFloat(c.pnl);return `<tr><td style="text-align:left;color:var(--muted);font-size:11px">${(c.opened_at||'').slice(5,16).replace('T',' ')}</td><td style="color:var(--muted);font-size:11px">${(c.closed_at||'').slice(5,16).replace('T',' ')}</td><td class="accent">${fmtDur(parseFloat(c.duration_min))}</td><td class="sym">${c.symbol}</td><td>${c.shares}</td><td>${fmtN(c.entry)}</td><td>${fmtN(c.exit)}</td><td class="${cls(p)}">${p>=0?'+':''}${fmtN(p)}</td><td class="${cls(p)}">${pct(parseFloat(c.pnl_pct))}</td></tr>`;}).join(""):'<tr><td colspan="9" class="empty">No closed trades yet — exits appear here as the desk banks/cuts positions.</td></tr>';
   // daily equity curve table
   const dayRows=days.length?days.slice().reverse().map(r=>{const n=parseFloat(r.net_pnl);return `<tr><td style="text-align:left">${r.date}</td><td>${r.trades}</td><td>${r.wins}W/${r.losses}L</td><td class="${cls(n)}">${n>=0?'+':''}${fmtN(n)}</td><td>$${fmtN(parseFloat(r.equity_end))}</td></tr>`;}).join(""):'<tr><td colspan="5" class="empty">No days logged yet</td></tr>';
   $("paperResult").innerHTML=`
     <div class="btmetrics">${cards}</div>
     <div class="bth">Open positions</div>
-    <table class="bttbl"><thead><tr><th>Sym</th><th>Sh</th><th>Entry</th><th>Stop</th><th>Target</th></tr></thead><tbody>${openRows}</tbody></table>
+    <table class="bttbl"><thead><tr><th>Sym</th><th>Sh</th><th>Entry</th><th>Stop</th><th>Target</th><th>Entry time</th><th>In trade</th></tr></thead><tbody>${openRows}</tbody></table>
     <div class="bth">Closed trades (history)</div>
-    <table class="bttbl"><thead><tr><th style="text-align:left">Closed</th><th>Sym</th><th>Sh</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>%</th></tr></thead><tbody>${closedRows}</tbody></table>
+    <table class="bttbl"><thead><tr><th style="text-align:left">Entry</th><th>Exit</th><th>Held</th><th>Sym</th><th>Sh</th><th>In</th><th>Out</th><th>P&amp;L</th><th>%</th></tr></thead><tbody>${closedRows}</tbody></table>
     <div class="bth">Daily history (equity curve)</div>
     <table class="bttbl"><thead><tr><th style="text-align:left">Date</th><th>Trades</th><th>W/L</th><th>Net</th><th>Equity</th></tr></thead><tbody>${dayRows}</tbody></table>`;
 }

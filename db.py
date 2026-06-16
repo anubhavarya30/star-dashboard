@@ -145,6 +145,43 @@ def trades(limit: int = 200):
     return [dict(r) for r in rows]
 
 
+def round_trips(limit: int = 200):
+    """Pair real IBKR fills (BOT->SLD, FIFO per symbol) into round-trip trades
+    with entry time, exit time, and HOLD DURATION — the real-trading equivalent of
+    the paper-trade history. Only trades STAR places going forward get real entry
+    times (IBKR doesn't expose them for pre-existing positions)."""
+    from datetime import datetime
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT ts,symbol,side,shares,price,realized_pnl FROM executions ORDER BY ts ASC"
+        ).fetchall()
+    lots, trips = {}, []
+    for r in rows:
+        sym = r["symbol"]; side = (r["side"] or "").upper(); sh = r["shares"] or 0
+        if side in ("BOT", "BUY"):
+            lots.setdefault(sym, []).append({"ts": r["ts"], "shares": sh, "price": r["price"]})
+        elif side in ("SLD", "SELL"):
+            remain = sh
+            while remain > 0 and lots.get(sym):
+                lot = lots[sym][0]
+                used = min(remain, lot["shares"])
+                try:
+                    dur = round((datetime.fromisoformat(r["ts"]) - datetime.fromisoformat(lot["ts"])).total_seconds() / 60, 1)
+                except Exception:
+                    dur = None
+                trips.append({
+                    "symbol": sym, "shares": used, "entry": lot["price"], "exit": r["price"],
+                    "opened_at": lot["ts"], "closed_at": r["ts"], "duration_min": dur,
+                    "pnl": round(((r["price"] or 0) - (lot["price"] or 0)) * used, 2),
+                    "pnl_pct": round(((r["price"] / lot["price"]) - 1) * 100, 2) if lot["price"] else None,
+                })
+                lot["shares"] -= used; remain -= used
+                if lot["shares"] <= 0:
+                    lots[sym].pop(0)
+    trips.sort(key=lambda t: t["closed_at"], reverse=True)
+    return trips[:limit]
+
+
 def position_history(symbol: str, limit_days: int = 30):
     with _conn() as c:
         rows = c.execute(

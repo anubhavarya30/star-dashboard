@@ -135,7 +135,8 @@ def record_entry(symbol, entry, stop, shares, target=None):
 
 
 TRADES_CSV = os.path.join(HERE, "..", "data", "paper_trades.csv")
-TRADE_FIELDS = ["closed_at", "symbol", "shares", "entry", "exit", "stop", "target", "pnl", "pnl_pct"]
+TRADE_FIELDS = ["opened_at", "closed_at", "duration_min", "symbol", "shares",
+                "entry", "exit", "stop", "target", "pnl", "pnl_pct"]
 
 
 def _append_trade(rec):
@@ -160,9 +161,15 @@ def record_exit(symbol, exit_price):
     pnl = round((exit_price - hit["entry"]) * hit["shares"], 2)
     s["open"].remove(hit)
     s["realized_pnl"] = round(s["realized_pnl"] + pnl, 2)
+    closed_at = datetime.now().isoformat()
+    try:
+        dur = round((datetime.fromisoformat(closed_at)
+                     - datetime.fromisoformat(hit["opened_at"])).total_seconds() / 60, 1)
+    except Exception:
+        dur = None
     rec = {**hit, "exit": exit_price, "pnl": pnl,
            "pnl_pct": round((exit_price / hit["entry"] - 1) * 100, 2),
-           "closed_at": datetime.now().isoformat()}
+           "closed_at": closed_at, "duration_min": dur}
     s["closed"].append(rec)
     _save(s)
     _append_trade(rec)                       # permanent trade history

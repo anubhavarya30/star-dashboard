@@ -420,6 +420,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(cached("runner_grade:" + (q.get("sym", [""])[0] or "movers"), _rg, ttl=60))
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
+            if u.path == "/api/round_trips":
+                return self._send_json({"round_trips": db.round_trips(int(q.get("limit", ["200"])[0]))})
             if u.path == "/api/account_history":
                 return self._send_json({"history": db.account_history(int(q.get("days", ["30"])[0]))})
             self.send_error(404)
