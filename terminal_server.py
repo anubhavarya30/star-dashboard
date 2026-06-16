@@ -397,10 +397,15 @@ class Handler(BaseHTTPRequestHandler):
                 st = rm.status()
                 return self._send_json({"closed": closed, "open": st["open_positions"],
                                         "realized_today": st["realized_pnl"]})
+            if u.path == "/api/breakdown":
+                def _bd():
+                    import breakdown_scan as bd
+                    return bd.scan()
+                return self._send_json(cached("breakdown", _bd, ttl=120))
             if u.path == "/api/options_play":
                 def _op():
                     import options_play as op
-                    return op.best_call(sym)
+                    return op.best_put(sym) if q.get("side",["call"])[0]=="put" else op.best_call(sym)
                 return self._send_json(cached("opt:" + sym, _op, ttl=120))
             if u.path == "/api/scout":
                 def _sc():

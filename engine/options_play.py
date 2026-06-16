@@ -97,7 +97,70 @@ def best_call(symbol, equity=500.0, budget_pct=0.30, min_dte=5, max_dte=21):
     }
 
 
+def best_put(symbol, equity=500.0, budget_pct=0.30, min_dte=5, max_dte=21):
+    """Bearish play — catch a DROP with defined risk. Picks a liquid near-ATM put.
+    Same engine as best_call, mirrored to the downside."""
+    import yfinance as yf
+    tk = yf.Ticker(symbol)
+    try:
+        spot = float(tk.fast_info.get("lastPrice") or tk.fast_info.get("last_price"))
+    except Exception:
+        spot = None
+    if not spot:
+        return {"symbol": symbol.upper(), "error": "no spot price"}
+    exps = list(getattr(tk, "options", []) or [])
+    if not exps:
+        return {"symbol": symbol.upper(), "error": "no options listed"}
+    from datetime import date, datetime
+    today = date.today()
+    def dte(e):
+        return (datetime.strptime(e, "%Y-%m-%d").date() - today).days
+    in_range = [e for e in exps if min_dte <= dte(e) <= max_dte]
+    exp = (in_range or sorted(exps, key=dte))[0]
+    days = dte(exp)
+    try:
+        puts = tk.option_chain(exp).puts
+    except Exception as e:
+        return {"symbol": symbol.upper(), "error": f"chain fetch failed: {e}"}
+    cands = []
+    for strike, bid, ask, last, oi in zip(puts["strike"], puts["bid"], puts["ask"],
+                                          puts["lastPrice"], puts["openInterest"]):
+        try:
+            strike = float(strike); oi = float(oi or 0)
+        except (TypeError, ValueError):
+            continue
+        if strike > spot * 1.02 or strike < spot * 0.88 or oi < 1:  # ATM to ~12% OTM (below spot)
+            continue
+        prem = _mid(bid, ask, last)
+        if not prem or prem <= 0:
+            continue
+        cands.append({"strike": strike, "premium": prem, "oi": oi})
+    if not cands:
+        return {"symbol": symbol.upper(), "spot": round(spot, 2), "expiry": exp,
+                "error": "no liquid near-ATM puts"}
+    cands.sort(key=lambda c: (abs(c["strike"] - spot), -c["oi"]))
+    best = cands[0]
+    cost_pc = round(best["premium"] * 100, 2)
+    budget = equity * budget_pct
+    contracts = max(1, int(budget // cost_pc)) if cost_pc <= budget else 1
+    max_loss = round(cost_pc * contracts, 2)
+    breakeven = round(best["strike"] - best["premium"], 2)
+    notional = round(spot * 100 * contracts, 2)
+    return {
+        "symbol": symbol.upper(), "spot": round(spot, 2), "expiry": exp, "dte": days,
+        "type": "PUT", "strike": best["strike"], "premium": best["premium"],
+        "cost_per_contract": cost_pc, "contracts": contracts, "max_loss": max_loss,
+        "pct_of_equity": round(max_loss / equity * 100, 1), "breakeven": breakeven,
+        "open_interest": int(best["oi"]), "notional_controlled": notional,
+        "leverage": round(notional / max_loss, 1) if max_loss else None,
+        "warning": "Defined risk = lose 100% of premium if wrong. Profits as the stock FALLS "
+                   "below breakeven. Theta decays it daily.",
+        "generated_at": datetime.now().astimezone().isoformat(),
+    }
+
+
 if __name__ == "__main__":
     import json
     sym = sys.argv[1] if len(sys.argv) > 1 else "QBTS"
-    print(json.dumps(best_call(sym), indent=2, default=str))
+    side = sys.argv[2] if len(sys.argv) > 2 else "call"
+    print(json.dumps(best_put(sym) if side == "put" else best_call(sym), indent=2, default=str))
