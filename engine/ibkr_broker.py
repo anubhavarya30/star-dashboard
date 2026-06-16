@@ -64,10 +64,18 @@ def place_order(symbol, qty, action="BUY", order_type="MKT", limit_price=None):
                              "Log into an IBKR PAPER (DU) account first."}
         contract = Stock(symbol.upper(), "SMART", "USD")
         ib.qualifyContracts(contract)
-        order = (LimitOrder(action, abs(int(qty)), float(limit_price))
-                 if order_type == "LMT" and limit_price else MarketOrder(action, abs(int(qty))))
+        # We have no IBKR market-data subscription (Error 10089) and plain market
+        # orders get cancelled after hours, so use a MARKETABLE LIMIT priced off
+        # yfinance (delayed) with outsideRth — this is what actually fills on paper.
+        if not limit_price:
+            import yfinance as yf
+            last = float(yf.Ticker(symbol).fast_info.get("lastPrice"))
+            limit_price = round(last * (1.02 if action.upper() == "BUY" else 0.98), 2)
+        order = LimitOrder(action, abs(int(qty)), float(limit_price))
+        order.tif = "DAY"
+        order.outsideRth = True
         trade = ib.placeOrder(contract, order)
-        ib.sleep(2)
+        ib.sleep(4)
         return {"ok": True, "account": acct, "symbol": symbol.upper(), "action": action,
                 "qty": int(qty), "status": trade.orderStatus.status,
                 "filled": trade.orderStatus.filled, "avg_fill": trade.orderStatus.avgFillPrice}
