@@ -77,6 +77,35 @@ def manage_open(force_close=False):
     s = rm._load()
     if not s["open"]:
         return
+    # ---- PASS 1: ACTIVE MANAGEMENT — raise stops to lock gains ----
+    # At +1R move stop to breakeven (can't lose). Above +2R trail 0.5R behind
+    # price (bank profit). A winner never round-trips into a loss.
+    if not force_close:
+        changed = False
+        for p in s["open"]:
+            px = _price(p["symbol"])
+            if px is None:
+                continue
+            risk = p.get("init_risk") or round(p["entry"] - p["stop"], 4)
+            if not p.get("init_risk"):
+                p["init_risk"] = risk; changed = True
+            if risk <= 0:
+                continue
+            R = (px - p["entry"]) / risk
+            ns = p["stop"]
+            if R >= 2.0:
+                ns = max(ns, round(px - 0.5 * risk, 2))      # trail 0.5R behind
+            elif R >= 1.0:
+                ns = max(ns, round(p["entry"], 2))           # breakeven
+            if ns > p["stop"]:
+                _log(f"RAISE STOP {p['symbol']} ${p['stop']}->${ns} "
+                     f"({'trail' if R >= 2 else 'breakeven'} @ {R:.2f}R, locks "
+                     f"${round((ns - p['entry']) * p['shares'], 2)})")
+                p["stop"] = ns; changed = True
+        if changed:
+            rm._save(s)
+    # ---- PASS 2: EXITS (uses the updated stops) ----
+    s = rm._load()
     bs = _broker()
     for p in list(s["open"]):
         px = _price(p["symbol"])
@@ -86,7 +115,7 @@ def manage_open(force_close=False):
         if force_close:
             exit_px, reason = px, "EOD close"
         elif px <= p["stop"]:
-            exit_px, reason = p["stop"], "stop hit"
+            exit_px, reason = p["stop"], ("locked gain" if p["stop"] >= p["entry"] else "stop hit")
         elif p.get("target") and px >= p["target"]:
             exit_px, reason = p["target"], "target hit"
         if exit_px is not None:
