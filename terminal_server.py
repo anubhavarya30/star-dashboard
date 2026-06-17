@@ -425,6 +425,9 @@ class Handler(BaseHTTPRequestHandler):
                     import options_play as op
                     return op.best_put(sym) if q.get("side",["call"])[0]=="put" else op.best_call(sym)
                 return self._send_json(cached("opt:" + sym, _op, ttl=120))
+            if u.path == "/api/calendar":
+                import market_calendar as mcal
+                return self._send_json(mcal.status())
             if u.path == "/api/star_score":
                 def _ss():
                     import star_score

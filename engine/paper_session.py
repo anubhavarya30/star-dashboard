@@ -28,9 +28,16 @@ def _now_ct():
 
 
 def _market_phase(now):
-    """'closed' | 'open' (RTH) | 'eod' (last 5 min) — US Central time."""
+    """'closed' | 'open' (RTH) | 'eod' (last 5 min) — US Central time.
+    Holiday-aware: returns 'closed' on NYSE holidays (e.g., Juneteenth)."""
     if now.weekday() >= 5:
         return "closed"
+    try:
+        import market_calendar as mc
+        if mc.is_holiday(now.date()):
+            return "closed"
+    except Exception:
+        pass
     t = now.time()
     if dtime(8, 30) <= t < dtime(14, 55):
         return "open"
@@ -172,7 +179,16 @@ def maybe_enter():
     if len(s["open_positions"]) >= rm.CFG["max_open"]:
         return
     open_syms = {p["symbol"] for p in s["open_positions"]}
-    pick = star_score.best_pick(equity=rm.CFG["equity"])     # gold-bot 9-vote + 2.5:1 ATR
+    # pre-holiday criteria: before a long weekend, low volume + gap risk -> be pickier
+    min_score = 5
+    try:
+        import market_calendar as mc
+        if mc.long_weekend_ahead():
+            min_score = 7
+            _log("pre-holiday session — raising entry bar to score>=7 (low volume/gap risk)")
+    except Exception:
+        pass
+    pick = star_score.best_pick(equity=rm.CFG["equity"], min_score=min_score)  # gold-bot 9-vote + 2.5:1 ATR
     plan = (pick.get("risk") or {}).get("plan") or {}
     if (pick.get("risk") or {}).get("verdict") != "APPROVED":
         _log(f"no 9-vote setup ({pick.get('symbol')}: {(pick.get('risk') or {}).get('verdict')})"); return

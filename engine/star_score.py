@@ -134,27 +134,28 @@ _cache = {"t": 0, "data": None}
 
 
 def scan(min_score=5):
-    """Score the universe; return ranked candidates with score >= min_score. 10-min cache."""
+    """Score the whole universe; cache 10 min; return candidates with score>=min_score."""
     if _cache["data"] and time.time() - _cache["t"] < 600:
-        return _cache["data"]
-    rows = []
-    for sym in UNIVERSE:
-        try:
-            r = score_symbol(sym)
-            if r.get("score", 0) >= min_score and r.get("rr", 0) >= 1:
-                rows.append(r)
-        except Exception:
-            pass
-    rows.sort(key=lambda r: (r["score"], r["rr"]), reverse=True)
-    out = {"ranked": rows, "scanned": len(UNIVERSE)}
-    _cache.update(t=time.time(), data=out)
-    return out
+        rows = _cache["data"]
+    else:
+        rows = []
+        for sym in UNIVERSE:
+            try:
+                r = score_symbol(sym)
+                if r.get("score", 0) >= 1 and r.get("rr", 0) >= 1:
+                    rows.append(r)
+            except Exception:
+                pass
+        rows.sort(key=lambda r: (r["score"], r["rr"]), reverse=True)
+        _cache.update(t=time.time(), data=rows)
+    ranked = [r for r in rows if r["score"] >= min_score]
+    return {"ranked": ranked, "scanned": len(UNIVERSE)}
 
 
-def best_pick(equity=None):
-    """Top 9-vote candidate, risk-sized via the risk manager — the desk's entry."""
+def best_pick(equity=None, min_score=5):
+    """Top 9-vote candidate (>=min_score), risk-sized via the risk manager."""
     import risk_manager as rm
-    cands = scan().get("ranked", [])
+    cands = scan(min_score).get("ranked", [])
     for c in cands:
         rk = rm.pre_trade_check(c["symbol"], c["price"], c["stop"], c["target"], equity=equity)
         if rk.get("approved"):
