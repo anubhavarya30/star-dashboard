@@ -16,3 +16,4 @@ current_trades.json
 did.bin
 .claude/settings.local.json
 real_market_data.json
+data/telegram_config.json

@@ -55,6 +55,17 @@ def _log(msg):
     return line
 
 
+def _alert(msg):
+    """Log locally AND push to Telegram (for real trade events)."""
+    _log(msg)
+    try:
+        import telegram_alert
+        telegram_alert.send(msg)
+    except Exception:
+        pass
+    return msg
+
+
 def _broker():
     """IBKR paper status — only auto-trades a verified DU (paper) account."""
     try:
@@ -95,7 +106,7 @@ def manage_open(force_close=False):
                     if r.get("filled") and r.get("avg_fill"):
                         exit_px, via = round(float(r["avg_fill"]), 2), "ibkr"
                 res = rm.record_partial_exit(p["symbol"], half, exit_px)
-                _log(f"SCALE[{via}] {p['symbol']} sold {half}/{p['shares']} @ ${exit_px} (+1R) "
+                _alert(f"SCALE[{via}] {p['symbol']} sold {half}/{p['shares']} @ ${exit_px} (+1R) "
                      f"banked ${res.get('pnl')}, {res.get('remaining')} riding, stop->breakeven")
         s = rm._load()   # reload after any scale-outs
     # ---- PASS 1: ACTIVE MANAGEMENT — raise stops to lock gains ----
@@ -150,14 +161,14 @@ def manage_open(force_close=False):
                 else:
                     _log(f"IBKR sell not filled {p['symbol']} ({r.get('status') or r.get('error')}) — marking exit {exit_px} (sim)")
             r2 = rm.record_exit(p["symbol"], exit_px)
-            _log(f"EXIT[{via}] {p['symbol']} @ ${exit_px} ({reason}) pnl ${r2.get('pnl')} | realized today ${r2.get('realized_today')}")
+            _alert(f"EXIT[{via}] {p['symbol']} @ ${exit_px} ({reason}) pnl ${r2.get('pnl')} | realized today ${r2.get('realized_today')}")
 
 
 def maybe_enter():
     import risk_manager as rm, scout
     s = rm.status()
     if s["halted"]:
-        _log("HALTED — daily loss limit hit, no new entries"); return
+        _alert("HALTED — daily loss limit hit, no new entries"); return
     if len(s["open_positions"]) >= rm.CFG["max_open"]:
         return
     open_syms = {p["symbol"] for p in s["open_positions"]}
@@ -179,7 +190,7 @@ def maybe_enter():
             _log(f"IBKR buy not filled {sym} ({r.get('status') or r.get('error')}) — no entry this tick")
             return
     rm.record_entry(sym, entry_px, plan["stop"], plan["shares"], plan["target"])
-    _log(f"ENTER[{via}] {sym} {plan['shares']}sh @ ${entry_px} stop ${plan['stop']} tgt ${plan['target']} "
+    _alert(f"ENTER[{via}] {sym} {plan['shares']}sh @ ${entry_px} stop ${plan['stop']} tgt ${plan['target']} "
          f"risk ${plan['dollar_risk']} | {pick.get('thesis','')[:55]}")
 
 
