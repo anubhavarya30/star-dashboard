@@ -244,6 +244,39 @@ def log_daily_summary():
                 f"net ${net}, equity ${row['equity_end']}")
 
 
+def eod_pnl_statement():
+    """Telegram a full P&L statement at EOD: every closed trade today + totals."""
+    import csv
+    import risk_manager as rm
+    s = rm._load()
+    today = s["date"]
+    closed = [t for t in s.get("closed", []) if str(t.get("closed_at", "")).startswith(today)]
+    eq = rm.CFG["equity"]
+    try:
+        rows = list(csv.DictReader(open(RESULTS))) if os.path.exists(RESULTS) else []
+        eq = float(rows[-1]["equity_end"]) if rows else eq
+    except Exception:
+        pass
+    wins = sum(1 for t in closed if (t.get("pnl") or 0) > 0)
+    net = round(sum(t.get("pnl") or 0 for t in closed), 2)
+    lines = [f"📊 STAR EOD P&L STATEMENT — {today}", "─────────────────────"]
+    if closed:
+        for t in closed:
+            pnl = t.get("pnl") or 0
+            tag = "(partial)" if t.get("partial") else ""
+            lines.append(f"{'🟢' if pnl >= 0 else '🔴'} {t['symbol']} {t.get('shares')}sh "
+                         f"{t.get('entry')}→{t.get('exit')} {'+' if pnl >= 0 else ''}${pnl} "
+                         f"({t.get('pnl_pct')}%) {tag}".rstrip())
+    else:
+        lines.append("No trades closed today.")
+    lines += ["─────────────────────",
+              f"Realized P&L: {'+' if net >= 0 else ''}${net}",
+              f"Record: {wins}W / {len(closed) - wins}L"
+              + (f" ({round(wins/len(closed)*100)}%)" if closed else ""),
+              f"Equity: ${round(eq, 2)}"]
+    return _alert("\n".join(lines))
+
+
 def tick():
     now = _now_ct()
     phase = _market_phase(now)
@@ -254,6 +287,7 @@ def tick():
         maybe_enter()
     if phase == "eod":
         log_daily_summary()                          # write the day's result + equity curve
+        eod_pnl_statement()                          # Telegram the full P&L statement
     import risk_manager as rm
     st = rm.status()
     return _log(f"tick done [{phase}] | open {len(st['open_positions'])} | realized ${st['realized_pnl']} | halted {st['halted']}")
