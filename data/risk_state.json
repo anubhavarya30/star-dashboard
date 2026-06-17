@@ -9,7 +9,17 @@
       "shares": 10,
       "target": 50.05,
       "risk_dollars": 24.1,
-      "opened_at": "2026-06-17T08:44:59.189507"
+      "opened_at": "2026-06-17T08:44:59.189507",
+      "init_risk": 2.41
+    },
+    {
+      "symbol": "HOOD",
+      "entry": 102.8,
+      "stop": 95.47,
+      "shares": 4,
+      "target": 117.49,
+      "risk_dollars": 29.32,
+      "opened_at": "2026-06-17T09:43:33.830507"
     }
   ],
   "closed": []
