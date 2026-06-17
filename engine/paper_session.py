@@ -168,7 +168,12 @@ def manage_open(force_close=False):
                 else:
                     _log(f"IBKR sell not filled {p['symbol']} ({r.get('status') or r.get('error')}) — marking exit {exit_px} (sim)")
             r2 = rm.record_exit(p["symbol"], exit_px)
-            _alert(f"EXIT[{via}] {p['symbol']} @ ${exit_px} ({reason}) pnl ${r2.get('pnl')} | realized today ${r2.get('realized_today')}")
+            pnl = r2.get("pnl") or 0
+            _alert("\n".join([
+                f"{'🟢' if pnl >= 0 else '🔴'} EXIT — {p['symbol']} [{via}] ({reason})",
+                f"  {p['shares']} sh {p['entry']}→${exit_px}",
+                f"  P&L {'+' if pnl >= 0 else ''}${pnl} · realized today ${r2.get('realized_today')}",
+            ]))
 
 
 def maybe_enter():
@@ -205,8 +210,12 @@ def maybe_enter():
             _log(f"IBKR buy not filled {sym} ({r.get('status') or r.get('error')}) — no entry this tick")
             return
     rm.record_entry(sym, entry_px, plan["stop"], plan["shares"], plan["target"])
-    _alert(f"ENTER[{via}] {sym} {plan['shares']}sh @ ${entry_px} stop ${plan['stop']} tgt ${plan['target']} "
-         f"risk ${plan['dollar_risk']} | {pick.get('thesis','')[:55]}")
+    _alert("\n".join([
+        f"🟢 ENTRY — {sym} [{via}]",
+        f"  {plan['shares']} sh @ ${entry_px}",
+        f"  stop ${plan['stop']} · target ${plan['target']} ({plan.get('rr')}R)",
+        f"  risk ${plan['dollar_risk']} · {pick.get('thesis','')[:70]}",
+    ]))
 
 
 RESULTS = os.path.join(HERE, "..", "data", "paper_results.csv")
