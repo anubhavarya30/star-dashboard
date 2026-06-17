@@ -1,25 +1,6 @@
 {
-  "date": "2026-06-16",
-  "realized_pnl": 0,
-  "open": [
-    {
-      "symbol": "SPCX",
-      "entry": 192.5,
-      "stop": 167.85,
-      "shares": 2,
-      "target": 241.8,
-      "risk_dollars": 49.3,
-      "opened_at": "2026-06-15T15:17:12.217852"
-    },
-    {
-      "symbol": "ARM",
-      "entry": 419.06,
-      "stop": 398.27,
-      "shares": 1,
-      "target": 460.64,
-      "risk_dollars": 20.79,
-      "opened_at": "2026-06-16T08:34:31.115963"
-    }
-  ],
+  "date": "2026-06-17",
+  "realized_pnl": 0.0,
+  "open": [],
   "closed": []
 }

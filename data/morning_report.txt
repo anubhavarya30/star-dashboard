@@ -1,10 +1,16 @@
-===== STAR MORNING REPORT: Tue Jun 16 17:11:13 CDT 2026 =====
+===== STAR MORNING REPORT: Wed Jun 17 07:45:01 CDT 2026 =====
 --- IBKR paper readiness ---
-  IBKR: CONNECTED DUQ923304 (paper) can_auto_trade=True
+  IBKR: NOT CONNECTED — ConnectionRefusedError: [Errno 61] Connect call failed ('127.0.0.1', 7497) -> log into PAPER (DU) TWS on 7497
 --- premarket watchlist ---
-STAR Morning Brief 2026-06-16: 8 graded, 0 watches, monitor: []
+STAR Morning Brief 2026-06-17: 8 graded, 0 watches, monitor: ['SLBT', 'CRVO', 'NMRA', 'LPRO']
 --- gap + catalyst ---
-0 gappers:
+6 gappers:
+  FRESH OBAI  +18% $1.11 | OBAI Stock Jumps Over 90% After Investor Takes $3.3M Position At 200% 
+  FRESH NMRA  +7% $1.56 | Three pivotal MDD trial failures for Neumora lead to staffing cuts
+        SLBT  +18% $8.89 | no news
+        CRVO  +17% $4.52 | CervoMed Insiders Lose Out As Stock Sinks To US$2.45
+        EHGO  -6% $1.32 | no news
+        CCTG  -4% $1.48 | CCSC Technology International Holdings Full Year 2025 Earnings: US$0.1
 --- desk status ---
-  open 2 | realized today $0 | halted False | desk fires at 8:30 CT
+  open 2 | realized today $0.0 | halted False | desk fires at 8:30 CT
 ===== end report =====
