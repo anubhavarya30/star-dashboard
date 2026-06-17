@@ -5,6 +5,14 @@
 
 ---
 
+## ⚙️ WORKING STYLE (user directive, 2026-06-17)
+**ACT, don't ask.** Do NOT end turns with "want me to do X?" permission questions
+and wait. The user wants decisive execution: build → wire → test → commit → push,
+then report what was done. Only pause for genuine forks: (a) anything risking REAL
+money / the live IBKR account (hard safety line), (b) a true either/or preference
+that changes direction. Otherwise pick the sensible path and ship it.
+
+
 ## 🗓️ Session log — 2026-06-12 (signal + backtest work)
 
 Laptop crashed overnight; resumed from this file. Recovered last night's task from
