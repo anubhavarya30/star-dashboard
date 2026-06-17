@@ -106,7 +106,7 @@ def manage_open(force_close=False):
             rm._save(s)
     # ---- PASS 2: EXITS (uses the updated stops) ----
     s = rm._load()
-    bs = _broker()
+    bs = None  # lazy-connect to IBKR only when an exit actually fires (cheap 60s loop)
     for p in list(s["open"]):
         px = _price(p["symbol"])
         if px is None:
@@ -120,6 +120,8 @@ def manage_open(force_close=False):
             exit_px, reason = p["target"], "target hit"
         if exit_px is not None:
             via = "sim"
+            if bs is None:
+                bs = _broker()                                 # connect only now, on a real exit
             if bs.get("can_auto_trade"):                       # close via real IBKR paper
                 r = _place(p["symbol"], p["shares"], "SELL")
                 if r.get("filled") and r.get("avg_fill"):

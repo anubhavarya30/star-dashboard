@@ -395,7 +395,17 @@ class Handler(BaseHTTPRequestHandler):
                 p = HERE / "data" / "paper_trades.csv"
                 closed = list(_csv.DictReader(p.open())) if p.exists() else []
                 st = rm.status()
-                return self._send_json({"closed": closed, "open": st["open_positions"],
+                openp = []
+                for pos in st["open_positions"]:
+                    cur = num(yf.Ticker(pos["symbol"]).fast_info.get("lastPrice"))
+                    risk = pos.get("init_risk") or (pos["entry"] - pos["stop"])
+                    if cur is not None:
+                        pos = {**pos, "current": round(cur, 2),
+                               "unrealized": round((cur - pos["entry"]) * pos["shares"], 2),
+                               "r_mult": round((cur - pos["entry"]) / risk, 2) if risk else 0,
+                               "winning": cur >= pos["entry"]}
+                    openp.append(pos)
+                return self._send_json({"closed": closed, "open": openp,
                                         "realized_today": st["realized_pnl"]})
             if u.path == "/api/all_trades":
                 return self._send_json({"trades": db.paper_trades_all(int(q.get("limit",["500"])[0])),

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>Label</key><string>com.star.activewatch</string>
+<key>ProgramArguments</key><array><string>/Users/anubhavarya/star/star-dashboard/venv/bin/python3</string><string>/Users/anubhavarya/star/star-dashboard/engine/active_watch.py</string></array>
+<key>KeepAlive</key><true/>
+<key>RunAtLoad</key><true/>
+<key>StandardOutPath</key><string>/tmp/star_paper.log</string>
+<key>StandardErrorPath</key><string>/tmp/star_paper.log</string>
+</dict></plist>
