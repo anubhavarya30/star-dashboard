@@ -1,5 +1,12 @@
 {
-  "open": null,
+  "open": {
+    "dir": "SHORT",
+    "entry": 4330.7,
+    "stop": 4359.3,
+    "target": 4273.5,
+    "reason": "breakdown",
+    "opened_at": "2026-06-17T13:16:32.160104-05:00"
+  },
   "trades": 1,
   "wins": 1,
   "sum_r": 2.0
