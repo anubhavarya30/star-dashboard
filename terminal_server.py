@@ -425,6 +425,11 @@ class Handler(BaseHTTPRequestHandler):
                     import options_play as op
                     return op.best_put(sym) if q.get("side",["call"])[0]=="put" else op.best_call(sym)
                 return self._send_json(cached("opt:" + sym, _op, ttl=120))
+            if u.path == "/api/star_score":
+                def _ss():
+                    import star_score
+                    return star_score.scan()
+                return self._send_json(cached("star_score", _ss, ttl=300))
             if u.path == "/api/scout":
                 def _sc():
                     import scout

@@ -165,18 +165,17 @@ def manage_open(force_close=False):
 
 
 def maybe_enter():
-    import risk_manager as rm, scout
+    import risk_manager as rm, star_score
     s = rm.status()
     if s["halted"]:
         _alert("HALTED — daily loss limit hit, no new entries"); return
     if len(s["open_positions"]) >= rm.CFG["max_open"]:
         return
     open_syms = {p["symbol"] for p in s["open_positions"]}
-    d = scout.scan()
-    pick = d.get("pick") or {}
+    pick = star_score.best_pick(equity=rm.CFG["equity"])     # gold-bot 9-vote + 2.5:1 ATR
     plan = (pick.get("risk") or {}).get("plan") or {}
     if (pick.get("risk") or {}).get("verdict") != "APPROVED":
-        _log(f"no APPROVED setup ({pick.get('symbol')}: {(pick.get('risk') or {}).get('verdict')})"); return
+        _log(f"no 9-vote setup ({pick.get('symbol')}: {(pick.get('risk') or {}).get('verdict')})"); return
     sym = pick["symbol"]
     if sym in open_syms or plan.get("shares", 0) < 1:
         return
