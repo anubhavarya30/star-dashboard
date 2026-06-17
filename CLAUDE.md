@@ -5,6 +5,45 @@
 
 ---
 
+## 🔁 RESUME AFTER RESTART — read FIRST (saved 2026-06-17, ~1pm CDT)
+User restarted laptop for a software update. Pick up EXACTLY here. Don't re-derive.
+
+**WHERE WE ARE:** Full autonomous paper-trading desk is LIVE on **real IBKR paper**
+(account **DUQ923304** on port 7497 — DU=paper, safe). Today's results: realized
+**+$12.30** (QURE scaled half at +1R), open: **QURE 5sh @ $44.78 (stop=breakeven,
+runner risk-free)**, **HOOD 4sh @ $102.80 (stop $95.47)**. Positions live in
+`data/risk_state.json`.
+
+**AFTER REBOOT — do these (act, don't ask):**
+1. **Relaunch terminal_server** (nohup dies on reboot):
+   `nohup ./venv/bin/python3 terminal_server.py >/tmp/star_terminal.log 2>&1 &` → http://localhost:8080/
+2. **TWS must be relaunched + logged into the PAPER (DU) account** on 7497, API
+   enabled — or the desk can't place IBKR paper trades. Verify: `/api/ibkr_broker`
+   should read `type:paper, can_auto_trade:true`. (Live account U25701222 is BLOCKED
+   by the safety gate — never auto-trade it.)
+3. **launchd jobs auto-resume on login** (no action): `com.star.activewatch` (60s
+   always-on engine — manages trades breakeven/trail/scale, enters on 9-vote score),
+   `com.star.premarket` (7:45am brief+gap scan), `com.star.openping` (8:45am phone
+   ping), `com.star.gold` (24/7 gold tester), `com.star.gexlogger` (3:15pm). Verify:
+   `launchctl list | grep com.star`.
+
+**LOCAL-ONLY files (survive reboot, NOT in git — don't lose):**
+`data/telegram_config.json` (Telegram bot creds, reused from ~/gold-trading-bot),
+`data/risk_state.json` (open positions), `.claude/settings.local.json` (hooks+perms).
+
+**THE BRAIN (current):** desk enters via `engine/star_score.py` = gold-bot **9-vote
+tech score (≥5, or ≥7 pre-holiday) + 2.5:1 ATR risk** (ported from
+~/gold-trading-bot/morning_screener.py). Manages every 60s via `engine/active_watch.py`:
+breakeven at +1R, scale half at +1R, trail 0.5R above +2R. Market-calendar aware
+(`engine/market_calendar.py` — no trading on holidays e.g. Fri Jun 19 Juneteenth;
+stricter pre-holiday). Telegram alerts on entry/scale/exit (`engine/telegram_alert.py`).
+Risk gate `engine/risk_manager.py` (15%/trade, $150 daily max). Dashboard Paper tab
+shows live P&L + market-status badge.
+
+**Everything is committed + pushed to origin/main.** Autosave Stop hook keeps it that way.
+
+---
+
 ## ⚙️ WORKING STYLE (user directive, 2026-06-17)
 **ACT, don't ask.** Do NOT end turns with "want me to do X?" permission questions
 and wait. The user wants decisive execution: build → wire → test → commit → push,
