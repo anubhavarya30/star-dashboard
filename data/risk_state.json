@@ -1,16 +1,17 @@
 {
   "date": "2026-06-17",
-  "realized_pnl": 0.0,
+  "realized_pnl": 12.3,
   "open": [
     {
       "symbol": "QURE",
       "entry": 44.78,
-      "stop": 42.37,
-      "shares": 10,
+      "stop": 44.78,
+      "shares": 5,
       "target": 50.05,
       "risk_dollars": 24.1,
       "opened_at": "2026-06-17T08:44:59.189507",
-      "init_risk": 2.41
+      "init_risk": 2.41,
+      "scaled": true
     },
     {
       "symbol": "HOOD",
@@ -23,5 +24,20 @@
       "init_risk": 7.33
     }
   ],
-  "closed": []
+  "closed": [
+    {
+      "symbol": "QURE",
+      "shares": 5,
+      "entry": 44.78,
+      "exit": 47.24,
+      "stop": 44.78,
+      "target": 50.05,
+      "pnl": 12.3,
+      "pnl_pct": 5.49,
+      "opened_at": "2026-06-17T08:44:59.189507",
+      "closed_at": "2026-06-17T09:57:51.796853",
+      "duration_min": 72.9,
+      "partial": true
+    }
+  ]
 }
