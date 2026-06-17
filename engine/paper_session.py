@@ -240,7 +240,7 @@ def log_daily_summary():
         if not rows:
             w.writeheader()
         w.writerow(row)
-    return _log(f"DAILY SUMMARY {today}: {row['trades']} trades, {wins}W/{losses}L, "
+    return _alert(f"DAILY SUMMARY {today}: {row['trades']} trades, {wins}W/{losses}L, "
                 f"net ${net}, equity ${row['equity_end']}")
 
 
