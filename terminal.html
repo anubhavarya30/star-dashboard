@@ -94,6 +94,11 @@
   .pick .p{color:var(--txt-2);font-variant-numeric:tabular-nums;font-size:12px}
   .pick .c{font-weight:600;font-variant-numeric:tabular-nums;font-size:12px;min-width:64px;text-align:right}
 
+  /* market status badge */
+  .mktstat{font-family:var(--sans);font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap;border:1px solid var(--line)}
+  .mktstat.open{background:rgba(46,213,115,.14);color:var(--up);border-color:rgba(46,213,115,.3)}
+  .mktstat.closed{background:rgba(255,93,108,.14);color:var(--down);border-color:rgba(255,93,108,.3)}
+  .mktstat.pre{background:rgba(255,166,43,.14);color:var(--amber);border-color:rgba(255,166,43,.35)}
   /* movers */
   .movers{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:8px;overflow:hidden}
   .mcol{background:var(--panel);padding:0}
@@ -377,6 +382,7 @@
     <kbd>↵</kbd>
   </form>
   <div class="strip" id="strip" aria-label="Market overview"></div>
+  <div class="mktstat" id="mktStat" title="" aria-label="Market status"></div>
   <div class="clock"><span class="live" id="liveDot" aria-hidden="true"></span><span id="freshness">connecting…</span></div>
 </header>
 
@@ -644,6 +650,15 @@ async function loadStats(){
 async function loadNews(){
   const n=await api(`/api/news?sym=${CUR}`),items=n.items||[];
   $("news").innerHTML=items.length?items.map(i=>`<a href="${i.url}" target="_blank" rel="noopener"><span class="tt">${i.title}</span><span class="src">${i.publisher||""}</span></a>`).join(""):'<div class="empty">No recent headlines.</div>';
+}
+async function loadMktStat(){
+  let d;try{d=await api(`/api/calendar`);}catch(e){return;}
+  const el=$("mktStat");if(!el)return;
+  let cls,txt;
+  if(!d.trading_day){cls="closed";txt=d.holiday?("● CLOSED · "+d.holiday):"● CLOSED · "+d.weekday;}
+  else if(d.pre_holiday){cls="pre";txt="▲ PRE-HOLIDAY · "+d.gap_days+"d gap to "+new Date(d.next_trading_day).toLocaleDateString("en-US",{weekday:"short"});}
+  else{cls="open";txt="● MARKET OPEN";}
+  el.className="mktstat "+cls;el.textContent=txt;el.title=d.note||"";
 }
 async function loadStrip(){
   try{
@@ -1037,11 +1052,11 @@ function freshness(){
 setInterval(freshness,1000);
 
 initCharts();
-loadAll();loadStrip();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
+loadAll();loadStrip();loadMktStat();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
 // deep-link: #agents / #pnl open that view directly
 {const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex","brief","paper"].includes(h))switchView(h);}
 window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex","brief","paper"].includes(h))switchView(h);});
-setInterval(()=>{loadQuote();loadStrip();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();
+setInterval(()=>{loadQuote();loadStrip();loadMktStat();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();
   if(document.getElementById("view-agents").classList.contains("active"))loadGexAgent();
   if(document.getElementById("view-paper").classList.contains("active"))loadPaper();},20000);
 </script>
