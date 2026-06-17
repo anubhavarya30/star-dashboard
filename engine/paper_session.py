@@ -77,6 +77,27 @@ def manage_open(force_close=False):
     s = rm._load()
     if not s["open"]:
         return
+    # ---- PASS 0: SCALE OUT half at +1R (bank profit, ride the rest) ----
+    if not force_close:
+        bs0 = None
+        for p in list(s["open"]):
+            px = _price(p["symbol"])
+            if px is None or p.get("scaled") or p["shares"] < 2:
+                continue
+            risk = p.get("init_risk") or round(p["entry"] - p["stop"], 4)
+            if risk > 0 and (px - p["entry"]) / risk >= 1.0:
+                half = p["shares"] // 2
+                exit_px, via = px, "sim"
+                if bs0 is None:
+                    bs0 = _broker()
+                if bs0.get("can_auto_trade"):
+                    r = _place(p["symbol"], half, "SELL")
+                    if r.get("filled") and r.get("avg_fill"):
+                        exit_px, via = round(float(r["avg_fill"]), 2), "ibkr"
+                res = rm.record_partial_exit(p["symbol"], half, exit_px)
+                _log(f"SCALE[{via}] {p['symbol']} sold {half}/{p['shares']} @ ${exit_px} (+1R) "
+                     f"banked ${res.get('pnl')}, {res.get('remaining')} riding, stop->breakeven")
+        s = rm._load()   # reload after any scale-outs
     # ---- PASS 1: ACTIVE MANAGEMENT — raise stops to lock gains ----
     # At +1R move stop to breakeven (can't lose). Above +2R trail 0.5R behind
     # price (bank profit). A winner never round-trips into a loss.

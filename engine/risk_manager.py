@@ -134,6 +134,42 @@ def record_entry(symbol, entry, stop, shares, target=None):
     _save(s); return s
 
 
+def record_partial_exit(symbol, shares, exit_price):
+    """Scale OUT `shares` of an open position (bank profit), keep the rest running.
+    Books the partial as a closed trade, reduces the position, marks it scaled, and
+    moves the remaining stop to breakeven. Used for +1R partial profit-taking."""
+    s = _load()
+    hit = next((p for p in s["open"] if p["symbol"] == symbol.upper()), None)
+    if not hit or shares <= 0 or shares >= hit["shares"]:
+        return {"error": "invalid partial exit"}
+    pnl = round((exit_price - hit["entry"]) * shares, 2)
+    closed_at = datetime.now().isoformat()
+    try:
+        dur = round((datetime.fromisoformat(closed_at)
+                     - datetime.fromisoformat(hit["opened_at"])).total_seconds() / 60, 1)
+    except Exception:
+        dur = None
+    hit["shares"] -= shares                                  # reduce the runner
+    hit["scaled"] = True                                     # only scale once
+    hit["stop"] = max(hit["stop"], round(hit["entry"], 2))   # breakeven on the rest
+    s["realized_pnl"] = round(s["realized_pnl"] + pnl, 2)
+    rec = {"symbol": symbol.upper(), "shares": shares, "entry": hit["entry"], "exit": exit_price,
+           "stop": hit["stop"], "target": hit.get("target"), "pnl": pnl,
+           "pnl_pct": round((exit_price / hit["entry"] - 1) * 100, 2),
+           "opened_at": hit["opened_at"], "closed_at": closed_at, "duration_min": dur, "partial": True}
+    s["closed"].append(rec)
+    _save(s)
+    _append_trade(rec)
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(HERE, ".."))
+        import db
+        db.record_paper_trade({**rec, "source": "stock", "dir": "LONG"})
+    except Exception:
+        pass
+    return {"symbol": symbol.upper(), "pnl": pnl, "remaining": hit["shares"]}
+
+
 TRADES_CSV = os.path.join(HERE, "..", "data", "paper_trades.csv")
 TRADE_FIELDS = ["opened_at", "closed_at", "duration_min", "symbol", "shares",
                 "entry", "exit", "stop", "target", "pnl", "pnl_pct"]
