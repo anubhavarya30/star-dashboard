@@ -1,16 +1,18 @@
-===== STAR MORNING REPORT: Wed Jun 17 07:45:01 CDT 2026 =====
+===== STAR MORNING REPORT: Thu Jun 18 07:45:02 CDT 2026 =====
 --- IBKR paper readiness ---
   IBKR: NOT CONNECTED — ConnectionRefusedError: [Errno 61] Connect call failed ('127.0.0.1', 7497) -> log into PAPER (DU) TWS on 7497
 --- premarket watchlist ---
-STAR Morning Brief 2026-06-17: 8 graded, 0 watches, monitor: ['SLBT', 'CRVO', 'NMRA', 'LPRO']
+STAR Morning Brief 2026-06-18: 8 graded, 0 watches, monitor: ['ELTX', 'QURE', 'FTHM']
 --- gap + catalyst ---
-6 gappers:
-  FRESH OBAI  +18% $1.11 | OBAI Stock Jumps Over 90% After Investor Takes $3.3M Position At 200% 
-  FRESH NMRA  +7% $1.56 | Three pivotal MDD trial failures for Neumora lead to staffing cuts
-        SLBT  +18% $8.89 | no news
-        CRVO  +17% $4.52 | CervoMed Insiders Lose Out As Stock Sinks To US$2.45
-        EHGO  -6% $1.32 | no news
-        CCTG  -4% $1.48 | CCSC Technology International Holdings Full Year 2025 Earnings: US$0.1
+8 gappers:
+  FRESH CAST  +11% $5.15 | FreeCast surges premarket; Accenture, Novocure slide
+  FRESH FTHM  -6% $1.11 | Retailer Bed Bath & Beyond Is Buying a Real Estate Brokerage.  What’s 
+  FRESH ICCM  +5% $6.4 | ICCM Stock On Track For Best Day In Nearly 5 Years — What’s Driving Th
+  FRESH MU    -3% $1043.19 | Stifel's $1,500 Target Bets Micron Has Further to Run
+  FRESH ARM   -3% $418.88 | Why Did RXT, NBIS, ARM Stocks Surge To 52-Week Highs?
+        WOK   -15% $4.33 | WORK Medical Technology Group Is Trending Overnight — Here's Why WOK S
+        EHGO  +15% $2.89 | no news
+        ELTX  +14% $4.71 | This Monthly Dividend Powerhouse Is Trading at a Bargain-Bin Valuation
 --- desk status ---
-  open 2 | realized today $0.0 | halted False | desk fires at 8:30 CT
+  open 0 | realized today $0.0 | halted False | desk fires at 8:30 CT
 ===== end report =====

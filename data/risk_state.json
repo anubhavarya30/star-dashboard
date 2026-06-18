@@ -1,43 +1,27 @@
 {
-  "date": "2026-06-17",
-  "realized_pnl": 12.3,
+  "date": "2026-06-18",
+  "realized_pnl": 0.0,
   "open": [
     {
-      "symbol": "QURE",
-      "entry": 44.78,
-      "stop": 44.78,
-      "shares": 5,
-      "target": 50.05,
-      "risk_dollars": 24.1,
-      "opened_at": "2026-06-17T08:44:59.189507",
-      "init_risk": 2.41,
-      "scaled": true
+      "symbol": "TSM",
+      "entry": 432.15,
+      "stop": 413.95,
+      "shares": 1,
+      "target": 477.64,
+      "risk_dollars": 18.2,
+      "opened_at": "2026-06-18T08:30:11.795311",
+      "init_risk": 18.2
     },
     {
-      "symbol": "HOOD",
-      "entry": 102.8,
-      "stop": 95.47,
-      "shares": 4,
-      "target": 117.49,
-      "risk_dollars": 29.32,
-      "opened_at": "2026-06-17T09:43:33.830507",
-      "init_risk": 7.33
+      "symbol": "UNH",
+      "entry": 404.84,
+      "stop": 397.22,
+      "shares": 1,
+      "target": 423.89,
+      "risk_dollars": 7.62,
+      "opened_at": "2026-06-18T08:40:22.710506",
+      "init_risk": 7.62
     }
   ],
-  "closed": [
-    {
-      "symbol": "QURE",
-      "shares": 5,
-      "entry": 44.78,
-      "exit": 47.24,
-      "stop": 44.78,
-      "target": 50.05,
-      "pnl": 12.3,
-      "pnl_pct": 5.49,
-      "opened_at": "2026-06-17T08:44:59.189507",
-      "closed_at": "2026-06-17T09:57:51.796853",
-      "duration_min": 72.9,
-      "partial": true
-    }
-  ]
+  "closed": []
 }

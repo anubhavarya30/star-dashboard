@@ -8,3 +8,6 @@ date,symbol,spot,net_gex,regime,gamma_flip,above_flip
 2026-06-16,IWM,292.08,-588797384.0,negative,293.18,False
 2026-06-16,QQQ,729.86,846504793.0,positive,728.28,True
 2026-06-16,SPY,750.35,1082361303.0,positive,749.61,True
+2026-06-17,IWM,289.84,-590525483.0,negative,291.97,False
+2026-06-17,QQQ,722.51,-3195434337.0,negative,728.39,False
+2026-06-17,SPY,741.04,-4373939105.0,negative,745.56,False
