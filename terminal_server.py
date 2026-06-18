@@ -10,6 +10,7 @@ Serves terminal.html and a small JSON API on http://localhost:8080
 Run:  ./venv/bin/python3 terminal_server.py
 """
 import json
+import os
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -467,6 +468,9 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     db.init_db()
-    print(f"🖥️  STAR Terminal running → http://localhost:{PORT}")
+    # Bind all interfaces by default so the dashboard is reachable over Tailscale/LAN
+    # (was 127.0.0.1 = localhost-only). Override with STAR_BIND=127.0.0.1 to lock down.
+    bind = os.environ.get("STAR_BIND", "0.0.0.0")
+    print(f"🖥️  STAR Terminal on {bind}:{PORT} → http://localhost:{PORT} (or http://<tailscale-ip>:{PORT})")
     print("   Data: yfinance (real, ~15min delayed) + IBKR portfolio + SQLite history")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    ThreadingHTTPServer((bind, PORT), Handler).serve_forever()
