@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>Label</key><string>com.star.terminal</string>
+<key>ProgramArguments</key><array><string>__REPO__/venv/bin/python3</string><string>__REPO__/terminal_server.py</string></array>
+<key>WorkingDirectory</key><string>__REPO__</string>
+<key>KeepAlive</key><true/>
+<key>RunAtLoad</key><true/>
+<key>StandardOutPath</key><string>/tmp/star_terminal.log</string>
+<key>StandardErrorPath</key><string>/tmp/star_terminal.log</string>
+</dict></plist>

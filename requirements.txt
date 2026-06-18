@@ -1,0 +1,6 @@
+# STAR server deps (Python 3.12+ recommended; 3.14 works with ib_async)
+ib_async>=2.1.0
+yfinance>=1.4.1
+pandas>=2.0
+requests>=2.31
+nest-asyncio>=1.6.0
