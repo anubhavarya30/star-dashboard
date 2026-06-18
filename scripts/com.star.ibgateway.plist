@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STAR — keep IB Gateway (via IBC) running 24/7, auto-login + auto-restart.
+     IBC handles the daily AND weekly login so it's fully hands-off.
+     Install:
+       cp scripts/com.star.ibgateway.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.star.ibgateway.plist
+     Edit the path below if your IBC dir differs. -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.star.ibgateway</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__HOME__/ibc/gatewaystart.sh</string>
+  </array>
+  <key>KeepAlive</key><true/>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/tmp/star_ibgateway.log</string>
+  <key>StandardErrorPath</key><string>/tmp/star_ibgateway.log</string>
+</dict></plist>

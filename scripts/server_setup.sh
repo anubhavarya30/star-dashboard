@@ -24,6 +24,8 @@ LA="$HOME/Library/LaunchAgents"; mkdir -p "$LA"
 UID_NUM="$(id -u)"
 for plist in scripts/com.star.*.plist; do
   label="$(basename "$plist" .plist)"
+  # IB Gateway job is installed by setup_ibc.sh AFTER credentials are configured
+  [ "$label" = "com.star.ibgateway" ] && { echo "… skipping $label (run scripts/setup_ibc.sh)"; continue; }
   # rewrite both the old absolute path and the __REPO__ template token
   sed -e "s#/Users/anubhavarya/star/star-dashboard#$REPO#g" -e "s#__REPO__#$REPO#g" \
       "$plist" > "$LA/$label.plist"

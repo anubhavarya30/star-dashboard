@@ -19,3 +19,5 @@ real_market_data.json
 data/telegram_config.json
 .agents/
 skills-lock.json
+ibc/
+config.ini

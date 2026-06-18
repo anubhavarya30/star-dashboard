@@ -14,8 +14,10 @@ this module is read-only and the desk stays on the simulator.
 """
 import os
 
-PORT = 7497
-HOST = "127.0.0.1"
+# Works with TWS (paper 7497) or IB Gateway. We tell IBC to expose Gateway on
+# 7497 too (OverrideTwsApiPort), so no change is needed — but allow an override.
+PORT = int(os.environ.get("STAR_IBKR_PORT", "7497"))
+HOST = os.environ.get("STAR_IBKR_HOST", "127.0.0.1")
 
 
 def _connect(client_id=88, timeout=10):
