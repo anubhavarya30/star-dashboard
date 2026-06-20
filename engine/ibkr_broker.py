@@ -85,6 +85,27 @@ def place_order(symbol, qty, action="BUY", order_type="MKT", limit_price=None):
         ib.disconnect()
 
 
+def fills():
+    """Authoritative IBKR order/fill history from the connected account — proof of
+    what actually executed (vs our own ledger)."""
+    ib = _connect(client_id=90)
+    try:
+        accts = ib.managedAccounts()
+        acct = accts[0] if accts else ""
+        ib.reqExecutions()
+        ib.sleep(2)
+        out = []
+        for f in ib.fills():
+            ex, c = f.execution, f.contract
+            out.append({"time": str(ex.time), "symbol": c.symbol, "secType": c.secType,
+                        "side": ex.side, "shares": float(ex.shares), "price": float(ex.price),
+                        "avg_price": float(ex.avgPrice)})
+        return {"account": acct, "type": "paper" if acct.upper().startswith("DU") else "live",
+                "count": len(out), "fills": out}
+    finally:
+        ib.disconnect()
+
+
 if __name__ == "__main__":
-    import json
-    print(json.dumps(status(), indent=2, default=str))
+    import json, sys
+    print(json.dumps(fills() if (len(sys.argv) > 1 and sys.argv[1] == "fills") else status(), indent=2, default=str))

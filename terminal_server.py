@@ -452,6 +452,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(cached("runner_grade:" + (q.get("sym", [""])[0] or "movers"), _rg, ttl=60))
             if u.path == "/api/trades":
                 return self._send_json({"trades": db.trades(int(q.get("limit", ["200"])[0]))})
+            if u.path == "/api/ibkr_fills":
+                def _ibf():
+                    import ibkr_broker as b
+                    return b.fills()
+                return self._send_json(cached("ibkr_fills", _ibf, ttl=30))
             if u.path == "/api/ibkr_broker":
                 def _ib():
                     import ibkr_broker as b
