@@ -295,6 +295,25 @@ def pnl_calendar(days: int = 35):
         e["unrealized"] = round(unreal, 2)
         by[today] = e
 
+    # fold in the autonomous PAPER desk's daily results (data/paper_results.csv).
+    # The desk's trades aren't in db.executions (no live IBKR sync when they filled),
+    # so the calendar would otherwise show $0 even though the desk made +$74. This
+    # makes the P&L Calendar match the Paper Trading tab.
+    import csv as _csv
+    pr = DB_PATH.parent / "data" / "paper_results.csv"
+    if pr.exists():
+        try:
+            for row in _csv.DictReader(pr.open()):
+                dt = row.get("date")
+                if not dt:
+                    continue
+                e = by.get(dt, {"date": dt, "realized": 0.0, "unrealized": 0.0, "trades": 0})
+                e["realized"] = round(e["realized"] + float(row.get("net_pnl") or 0), 2)
+                e["trades"] = e["trades"] + int(row.get("trades") or 0)
+                by[dt] = e
+        except Exception:
+            pass
+
     for e in by.values():
         e["total"] = round(e["realized"] + e["unrealized"], 2)
     return sorted(by.values(), key=lambda x: x["date"])
