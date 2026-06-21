@@ -21,3 +21,11 @@ data/telegram_config.json
 skills-lock.json
 ibc/
 config.ini
+data/risk_state.json
+data/gold_state.json
+data/gold_results.csv
+data/paper_results.csv
+data/paper_trades.csv
+data/gex_history.csv
+data/morning_report.txt
+data/premarket/
