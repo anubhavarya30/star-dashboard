@@ -604,12 +604,17 @@ function baseChartOpts(h){return{
   crosshair:{mode:0,vertLine:{color:"#3a4658",labelBackgroundColor:"#1a2230"},horzLine:{color:"#3a4658",labelBackgroundColor:"#1a2230"}}
 };}
 function initCharts(){
-  const pe=$("priceChart");
-  priceChart=LightweightCharts.createChart(pe,{...baseChartOpts(pe.clientHeight),autoSize:true});
-  candleSeries=priceChart.addCandlestickSeries({upColor:css("--bull"),downColor:css("--bear"),borderUpColor:css("--bull"),borderDownColor:css("--bear"),wickUpColor:css("--bull"),wickDownColor:css("--bear")});
-  const ae=$("acctChart");
-  acctChart=LightweightCharts.createChart(ae,{...baseChartOpts(ae.clientHeight),autoSize:true});
-  acctSeries=acctChart.addAreaSeries({lineColor:css("--amber"),topColor:"rgba(255,166,43,.28)",bottomColor:"rgba(255,166,43,0)",lineWidth:2});
+  // guard: if the CDN chart lib failed to load, skip charts but NEVER break the
+  // rest of the page (menu, tabs, data) — charts are non-essential.
+  if(typeof LightweightCharts==="undefined"){console.warn("LightweightCharts not loaded — charts disabled");return;}
+  try{
+    const pe=$("priceChart");
+    priceChart=LightweightCharts.createChart(pe,{...baseChartOpts(pe.clientHeight),autoSize:true});
+    candleSeries=priceChart.addCandlestickSeries({upColor:css("--bull"),downColor:css("--bear"),borderUpColor:css("--bull"),borderDownColor:css("--bear"),wickUpColor:css("--bull"),wickDownColor:css("--bear")});
+    const ae=$("acctChart");
+    acctChart=LightweightCharts.createChart(ae,{...baseChartOpts(ae.clientHeight),autoSize:true});
+    acctSeries=acctChart.addAreaSeries({lineColor:css("--amber"),topColor:"rgba(255,166,43,.28)",bottomColor:"rgba(255,166,43,0)",lineWidth:2});
+  }catch(e){console.warn("chart init failed:",e);}
 }
 
 async function loadChart(fit=true){
