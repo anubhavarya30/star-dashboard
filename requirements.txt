@@ -5,3 +5,5 @@ pandas>=2.0
 requests>=2.31
 nest-asyncio>=1.6.0
 python-dotenv>=1.0
+crawl4ai>=0.9
+mcp>=1.0
