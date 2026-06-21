@@ -4,3 +4,4 @@ yfinance>=1.4.1
 pandas>=2.0
 requests>=2.31
 nest-asyncio>=1.6.0
+python-dotenv>=1.0
