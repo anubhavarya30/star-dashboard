@@ -1,64 +1,67 @@
-# STAR
+# ⭐ STAR — Autonomous Paper-Trading Terminal
 
-Personal algorithmic trading + research terminal.
+STAR is a self-hosted, 24/7 **paper-trading** research desk: it scans the market,
+scores candidates, places **simulated trades through Interactive Brokers' paper
+account**, manages them with hard risk rules, and reports to a live dashboard +
+Telegram — all running unattended on a dedicated machine.
 
-## Folder structure
+> ⚠️ **Disclaimer.** Experimental, educational project for **paper trading only**.
+> **Not financial advice**, **no proven live edge**, and a hardwired safety gate
+> **refuses to trade any non-paper (live) account**. Nothing here is a
+> recommendation to trade real money.
 
-```
-star-dashboard/
-├── (root)            LIVE SYSTEM — the running terminal (self-contained)
-│   ├── terminal_server.py     Bloomberg-style terminal backend (port 8080)
-│   ├── terminal.html          the dashboard UI (Lightweight Charts, Mag7, movers)
-│   ├── ibkr_live_sync.py      pulls real IBKR account/portfolio from TWS (ib_async)
-│   ├── run_sync_loop.py       runs the sync every 30s
-│   ├── db.py                  SQLite history layer (snapshots + trade ledger)
-│   ├── webull_movers.py       Webull public gainers/losers/active
-│   ├── live_account.json      single source of truth for current account state
-│   └── star_trading.db        SQLite history
-│
-├── engine/           TRADING BRAIN — foundation for STAR (the CEO). NOT yet wired.
-│   ├── star_brain.py              CEO orchestrator (needs deps de-Supabased)
-│   ├── multi_agent_orchestrator.py 7-step workflow (logic still stubbed)
-│   ├── agents.py                  4 agents: research / earnings / sentiment / protection
-│   ├── agent_aggregator.py        vote aggregation        [TODO: remove Supabase]
-│   ├── daily_routine_planner.py   daily plan              [TODO: remove Supabase]
-│   ├── data_providers.py          data feeds              [TODO: remove Supabase]
-│   ├── trading_signals.py         Volume-Weighted RSI strategy  ✓ clean
-│   ├── position_manager.py        position & risk sizing        ✓ clean
-│   ├── market_data_provider.py    yfinance market data          ✓ clean
-│   ├── indicators.py              technical indicators          ✓ clean
-│   ├── strategies.py              strategy definitions          ✓ clean
-│   ├── ibkr_connector.py / ibkr_live_trader.py  IBKR execution  ✓ clean
-│   └── tradingview_connector.py   TradingView CDP bridge        ✓ clean
-│
-└── _legacy/          ARCHIVE — superseded prototypes (9 dashboards, Supabase setup,
-                      duplicate engines, one-off tests). Kept on disk, gitignored.
-```
+---
 
-## Run the live terminal
+## What it does
+- **Scans** a liquid universe + market movers, premarket gaps, and news catalysts.
+- **Scores** each name with a 9-vote trend/momentum framework.
+- **Trades** the best setups on **IBKR paper** (gated to `DU…` accounts only).
+- **Manages** every position every 60s: breakeven, partial scale-out, trailing stop.
+- **Controls risk**: fixed % per trade, daily max-loss circuit breaker, holiday-aware.
+- **Reports**: web dashboard, Telegram alerts (entry/exit/EOD P&L), SQLite history.
+- **Self-heals**: launchd + a watchdog keep it running across crashes/reboots.
 
+## The live strategy — 9-vote swing
+- **Entry** (≥5 of 9 votes): above 200-EMA, EMA stack (8>21>50), EMA8>21, MACD+,
+  RSI 50–72, ADX>22, 20-day momentum, volume surge, tight pullback to EMA21.
+- **Risk**: stop = entry − 1.5×ATR · target = entry + 3.75×ATR (**2.5:1**).
+- **Management**: scale half at +1R, stop→breakeven at +1R, trail above +2R.
+- **Hold**: swing (multi-day, to stop/target).
+- **Backtest**: +0.175R/trade over ~2,385 trades (daily-bar, pre-cost) — *real but
+  unproven live*; the paper desk validates it forward. (EOD-flattening the same
+  signal was only +0.012R — holding to target is where the edge lives.)
+
+## Architecture
+| Layer | Files |
+|---|---|
+| Dashboard (HTTP + JSON API, :8080) | `terminal_server.py`, `terminal.html` |
+| Trading engine (always-on, 60s loop) | `engine/active_watch.py`, `engine/paper_session.py` |
+| Signal / scoring | `engine/star_score.py` (9-vote), `engine/trading_signals.py` (VW-RSI) |
+| Risk + ledger | `engine/risk_manager.py`, SQLite `star_trading.db` |
+| Broker (paper-gated) | `engine/ibkr_broker.py` (ib_async, port 7497) |
+| Backtests | `engine/backtest_9vote.py`, `engine/backtest.py` |
+| Research tools | scout, premarket brief, gap+catalyst scanner, runner scanner/grader, GEX radar, breakdown/puts, forensic, gold tester |
+| Alerts | `engine/telegram_alert.py` |
+| Ops / 24-7 | `scripts/*.sh`, `scripts/com.star.*.plist` (launchd), `engine/watchdog.py` |
+
+## Run it (dev)
 ```bash
-# 1. real IBKR sync (needs TWS running + logged in on port 7497)
-./venv/bin/python3 run_sync_loop.py &
-# 2. terminal server
-./venv/bin/python3 terminal_server.py &
-#    → http://localhost:8080/
+python3 -m venv venv
+./venv/bin/python3 -m pip install -r requirements.txt
+./venv/bin/python3 terminal_server.py     # dashboard → http://localhost:8080
 ```
+24/7 server deploy, remote access (Tailscale), and IBKR auto-login (IB Gateway +
+IBC) live in `scripts/server_setup.sh`, `scripts/stay_awake.sh`, `scripts/setup_ibc.sh`.
 
-## STAR vision (engine/ — to build)
+## Data & honesty
+Real data only (yfinance ~15-min delayed; IBKR paper). **No fabricated/seeded
+values** — if a source is down the UI says so. Per-machine live state
+(`data/*state*.json`, `data/*_results.csv`, `data/telegram_config.json`, broker
+creds) is **gitignored** and never committed.
 
-STAR is the "CEO" agent. Supporting agents feed it data/signals; STAR combines
-them with the trading concepts in `engine/` (Volume-Weighted RSI + risk sizing)
-to make decisions and execute via IBKR.
+## Contributing
+**Direct pushes to `main` are disabled — open a Pull Request.** All changes go
+through PR review before merge.
 
-**Current honest state:** the agent scaffolding exists in `engine/` but is NOT
-wired to the live system. Gen-1 (`star_brain` + `agent_aggregator` + `agents`)
-needs Supabase removed; Gen-2 (`multi_agent_orchestrator`) needs its stubbed
-logic replaced with real analysis. The clean, reusable parts are the strategy
-libs (`trading_signals`, `position_manager`, `market_data_provider`, `indicators`).
-
-## Data honesty
-- Quotes/charts: yfinance, ~15-min delayed.
-- IBKR portfolio: live from TWS but **delayed** prices (no market-data subscription).
-- Movers: Webull public ranking (no auth).
-- Trade history: real fills only — empty until the account actually trades.
+## License
+Personal/educational. No warranty.
