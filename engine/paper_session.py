@@ -193,6 +193,16 @@ def maybe_enter():
             _log("pre-holiday session — raising entry bar to score>=7 (low volume/gap risk)")
     except Exception:
         pass
+    # macro news guard: on a major RISK-OFF day, don't open new risk (graceful if
+    # crawl4ai isn't installed — returns low risk, desk runs normally)
+    try:
+        import news_watch
+        nw = news_watch.assess()
+        if nw.get("risk_level") == "high":
+            _log(f"RISK-OFF pause: {nw.get('risk_off_count')} major macro headlines — no new entries")
+            return
+    except Exception:
+        pass
     pick = star_score.best_pick(equity=rm.CFG["equity"], min_score=min_score)  # gold-bot 9-vote + 2.5:1 ATR
     plan = (pick.get("risk") or {}).get("plan") or {}
     if (pick.get("risk") or {}).get("verdict") != "APPROVED":
@@ -200,6 +210,15 @@ def maybe_enter():
     sym = pick["symbol"]
     if sym in open_syms or plan.get("shares", 0) < 1:
         return
+    # earnings guard: never open a swing into an earnings report (gap risk)
+    try:
+        import earnings
+        eb = earnings.blocked(sym, within=3)
+        if eb["blocked"]:
+            _log(f"skip {sym} — earnings in {eb['days_to_earnings']}d ({eb['earnings_date']}); no swing into earnings")
+            return
+    except Exception:
+        pass
     entry_px, via = plan["entry"], "sim"
     bs = _broker()
     if bs.get("can_auto_trade"):                               # enter via real IBKR paper

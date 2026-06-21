@@ -428,6 +428,16 @@ class Handler(BaseHTTPRequestHandler):
                     import options_play as op
                     return op.best_put(sym) if q.get("side",["call"])[0]=="put" else op.best_call(sym)
                 return self._send_json(cached("opt:" + sym, _op, ttl=120))
+            if u.path == "/api/earnings":
+                def _e():
+                    import earnings
+                    return earnings.blocked(sym)
+                return self._send_json(cached("earn:"+sym, _e, ttl=3600))
+            if u.path == "/api/news_watch":
+                def _nw():
+                    import news_watch
+                    return news_watch.assess()
+                return self._send_json(cached("news_watch", _nw, ttl=1200))
             if u.path == "/api/calendar":
                 import market_calendar as mcal
                 return self._send_json(mcal.status())
