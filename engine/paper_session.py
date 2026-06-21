@@ -286,12 +286,17 @@ def eod_pnl_statement():
     return _alert("\n".join(lines))
 
 
+SWING_MODE = True   # backtest: EOD-flatten = +0.012R (no edge); swing hold = +0.175R.
+                    # Hold positions across days to their 1.5xATR stop / 3.75xATR target.
+
+
 def tick():
     now = _now_ct()
     phase = _market_phase(now)
     if phase == "closed":
         return _log("market closed — no action")
-    manage_open(force_close=(phase == "eod"))
+    # SWING: never force-flatten at EOD — let winners run to target (that's the edge).
+    manage_open(force_close=(phase == "eod" and not SWING_MODE))
     if phase == "open":
         maybe_enter()
     if phase == "eod":
