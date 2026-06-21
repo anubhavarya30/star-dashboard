@@ -27,10 +27,10 @@ def _connect(client_id=88, timeout=10):
     return ib
 
 
-def status():
+def status(client_id=88):
     """Connection + account-type check. Safe; never places orders."""
     try:
-        ib = _connect()
+        ib = _connect(client_id=client_id)
     except Exception as e:
         return {"connected": False, "error": f"{type(e).__name__}: {e}",
                 "hint": "Start TWS and enable API on port 7497."}
@@ -108,4 +108,5 @@ def fills():
 
 if __name__ == "__main__":
     import json, sys
-    print(json.dumps(fills() if (len(sys.argv) > 1 and sys.argv[1] == "fills") else status(), indent=2, default=str))
+    cid = int(os.environ.get("STAR_IBKR_STATUS_CID", "88"))
+    print(json.dumps(fills() if (len(sys.argv) > 1 and sys.argv[1] == "fills") else status(cid), indent=2, default=str))

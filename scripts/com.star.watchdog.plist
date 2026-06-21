@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STAR watchdog — health monitor. Runs every 3 min, Telegrams on any failure
+     (dashboard down, engine stuck, IBKR disconnected, desk halted) and again on
+     recovery. Self-gating via /tmp/star_watchdog_state.json so it only alerts on
+     transitions. Install via scripts/server_setup.sh (path-rewritten to this Mac). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.star.watchdog</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__REPO__/venv/bin/python3</string>
+        <string>__REPO__/engine/watchdog.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>__REPO__</string>
+    <key>StartInterval</key>
+    <integer>180</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/star_watchdog.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/star_watchdog.log</string>
+</dict>
+</plist>

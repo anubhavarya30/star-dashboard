@@ -5,6 +5,47 @@
 
 ---
 
+## 🖥️ 24/7 SERVER STATE — read FIRST (saved 2026-06-20)
+This Mac is now the dedicated 24/7 STAR server. **Repo path is now
+`/Users/anubhav.arya/star/star-dashboard`** (note the DOT — different from the old
+`/Users/anubhavarya/...` referenced lower in this file). **venv is Python 3.11.3**
+(`/usr/local/bin/python3.11`); the old 3.14 venv was rebuilt. Use `./venv/bin/python3`.
+
+**WHAT AUTO-RECOVERS AFTER A CRASH/REBOOT (no human, no Claude needed):**
+- macOS **auto-login is ON** (autoLoginUser=anubhav.arya) → Mac logs in itself.
+- launchd jobs with RunAtLoad+KeepAlive relaunch on login & restart on crash:
+  `com.star.terminal` (dashboard :8080), `com.star.activewatch` (60s engine),
+  `com.star.watchdog` (3-min health monitor). Plus scheduled: `com.star.papertrader`
+  (5m), `com.star.gold`, `com.star.gexlogger`, `com.star.premarket`, `com.star.openping`,
+  `com.star.dailyrestart` (06:07 local — kicks terminal+activewatch so they reconnect
+  to IBKR cleanly after TWS's daily restart, before the open).
+- Power: `SleepDisabled=1` (clamshell/lid-closed safe). Keep plugged into AC.
+
+**THE ONE GAP — IBKR does NOT auto-relaunch after reboot:** no IBC configured
+(`~/ibc/config.ini` absent, `com.star.ibgateway` not installed). After a reboot TWS/
+Gateway must be manually relaunched + logged into PAPER (DU) on 7497. The watchdog
+catches this and Telegrams `⚠️ IBKR DISCONNECTED`, re-nagging every 30 min. To close
+the gap: run `scripts/setup_ibc.sh` and put paper creds in `~/ibc/config.ini` (secrets,
+never committed) — user must supply credentials.
+
+**CLAUDE IS NOT A DAEMON:** Claude does NOT auto-restart itself after a crash — the
+system is built to recover via launchd without Claude. The in-chat 5-min logs/P&L
+display is a session-only cron loop that dies when the Claude session ends.
+
+**REMOTE ACCESS:** Tailscale installed + signed in (anubhav.arya789@). This Mac's
+Tailscale IP = **100.97.21.122** → dashboard at `http://100.97.21.122:8080` from any
+network (private to your devices). `terminal_server.py` now binds `0.0.0.0` (was
+`127.0.0.1`) so LAN (`192.168.1.235:8080`) + Tailscale both work.
+
+**MONITORING/HEALING:** `engine/watchdog.py` checks dashboard, engine, IBKR (via a
+FRESH subprocess with dedicated client-id 77 — true broker state, no collision with
+engine's 88/89), and halt state; Telegrams on failure AND recovery. If terminal_server's
+IBKR view wedges while the broker is reachable, the watchdog auto-restarts terminal
+(`_heal_terminal`) and Telegrams. Telegram creds in `data/telegram_config.json`
+(chat_id 7435641961). User directive: **act, don't ask; route real decisions to Telegram.**
+
+---
+
 ## 🔁 RESUME AFTER RESTART — read FIRST (saved 2026-06-17, ~1pm CDT)
 User restarted laptop for a software update. Pick up EXACTLY here. Don't re-derive.
 

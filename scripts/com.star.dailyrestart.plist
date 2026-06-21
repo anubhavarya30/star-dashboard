@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STAR — daily pre-market refresh at 06:07 local. Kicks terminal_server +
+     active_watch so they reconnect to IBKR cleanly after TWS's daily restart,
+     well before the 8:30 CT market open. Installed via scripts/server_setup.sh. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.star.dailyrestart</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO__/scripts/daily_restart.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>6</integer>
+        <key>Minute</key><integer>7</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/tmp/star_dailyrestart.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/star_dailyrestart.log</string>
+</dict>
+</plist>
