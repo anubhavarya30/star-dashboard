@@ -150,11 +150,14 @@ def maybe_enter():
         spx = op.option_price(sym, opt["expiry"], opt["short_strike"], right) or 0.0
         r = b.place_option_spread(sym, opt["expiry"], opt["long_strike"], opt["short_strike"],
                                   right, opt["contracts"], lpx, spx, action="OPEN")
-        if not r.get("filled"):
-            ps._log(f"spread not filled {sym} ({r.get('error') or r.get('legs')})")
-            return
-        if r.get("net_debit"):
+        if r.get("filled") and r.get("net_debit"):
             debit = r["net_debit"]; via = "ibkr"
+        else:
+            # IBKR refused/failed (e.g. TWS disclaimer 10141) — do NOT silently skip.
+            # Record the trade on the simulator (clearly labelled) so the strategy is
+            # always tracked and visible, then surface why the real fill didn't land.
+            ps._log(f"spread not IBKR-filled {sym} ({r.get('error') or r.get('blocked') or r.get('legs')}) — recording SIM")
+            via = "sim"
     max_loss = round(debit * 100 * opt["contracts"], 2)
     pos = {"symbol": sym, "right": right, "expiry": opt["expiry"],
            "long_strike": opt["long_strike"], "short_strike": opt["short_strike"],
