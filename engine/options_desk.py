@@ -101,9 +101,14 @@ def manage():
             s["wins"] += 1 if pnl > 0 else 0
             s["open"].remove(p); _save(s)
             _rec_db({**p, "exit": exitv, "pnl": pnl, "closed_at": datetime.now().isoformat()})
-            ps._alert(f"{'🟢' if pnl>=0 else '🔴'} SPREAD EXIT — {p['symbol']} "
-                      f"{p['long_strike']}/{p['short_strike']}{right.upper()[0]} ({reason}) "
-                      f"{'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
+            ps._log(f"SPREAD EXIT {p['symbol']} {p['long_strike']}/{p['short_strike']}{right.upper()[0]} "
+                    f"({reason}) {'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
+            # Telegram a Webull CLOSE ticket (you tap it to close on Webull).
+            try:
+                import webull_ticket
+                webull_ticket.exit_ticket(p, reason, exitv, pnl)
+            except Exception as e:
+                ps._log(f"webull exit ticket failed: {e}")
 
 
 def maybe_enter():
@@ -170,10 +175,14 @@ def maybe_enter():
            "under_entry": plan["entry"], "under_stop": plan["stop"], "under_target": plan["target"],
            "opened_at": datetime.now().isoformat()}
     s["open"].append(pos); _save(s)
-    ps._alert(f"{glyph} SPREAD ENTRY[{via}] {sym} {opt['long_strike']}/{opt['short_strike']}{right} "
-              f"exp {opt['expiry']} x{opt['contracts']} @ ${debit} debit "
-              f"(max loss ${max_loss}, max gain ${opt['max_gain']}, {opt['rr']}:1) "
-              f"· {pick.get('thesis','')[:40]}")
+    ps._log(f"SPREAD ENTRY[{via}] {sym} {opt['long_strike']}/{opt['short_strike']}{right} "
+            f"x{opt['contracts']} @ ${debit} (maxloss ${max_loss} maxgain ${opt['max_gain']} {opt['rr']}:1)")
+    # Semi-manual real execution: Telegram a ready-to-place Webull ticket (you tap it).
+    try:
+        import webull_ticket
+        webull_ticket.entry_ticket(pos, pick.get("thesis", ""))
+    except Exception as e:
+        ps._log(f"webull entry ticket failed: {e}")
 
 
 def _rec_db(p):
