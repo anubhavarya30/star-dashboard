@@ -141,10 +141,9 @@ def tech_score_short(prices, volumes=None):
                    "votes": votes}
 
 
-def worst_pick(min_score=6):
-    """Weakest name in the universe with a clean downside setup (>= min_score bearish
-    votes). For PUT plays — defined risk = premium, so no share-risk gate needed.
-    Returns symbol + underlying plan (entry, stop ABOVE, target BELOW)."""
+def worst_candidates(min_score=6):
+    """Ranked weakest names with a clean downside setup (>= min_score bearish votes).
+    Each row has the underlying plan (entry, stop ABOVE, target BELOW)."""
     rows = []
     for sym in UNIVERSE:
         try:
@@ -159,16 +158,22 @@ def worst_pick(min_score=6):
             reasons = [k.replace("_", " ") for k, v in ind["votes"].items() if v]
             rows.append({"symbol": sym.upper(), "score": score, "price": ind["price"],
                          "atr": ind["atr"], "stop": stop, "target": target, "rr": rr,
-                         "reasons": reasons})
+                         "thesis": f"DOWNSIDE {score}/9 ({', '.join(reasons[:4])})"})
         except Exception:
             pass
     rows.sort(key=lambda r: (r["score"], r["rr"]), reverse=True)
+    return rows
+
+
+def worst_pick(min_score=6):
+    """Single weakest name (for callers that want one). See worst_candidates()."""
+    rows = worst_candidates(min_score)
     if not rows:
         return {"symbol": None, "plan": {}, "thesis": "no name scored >= bearish threshold"}
     c = rows[0]
     return {"symbol": c["symbol"], "score": c["score"], "rr": c["rr"],
             "plan": {"entry": c["price"], "stop": c["stop"], "target": c["target"]},
-            "thesis": f"DOWNSIDE {c['score']}/9 ({', '.join(c['reasons'][:4])})"}
+            "thesis": c["thesis"]}
 
 
 def _series(sym):

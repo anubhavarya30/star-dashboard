@@ -113,6 +113,130 @@ def option_price(symbol, expiry, strike, right="C"):
         return None
 
 
+def _chain_rows(df):
+    """[{strike, mid, oi}] for liquid rows (OI>0, priceable), sorted by strike."""
+    rows = []
+    for strike, bid, ask, last, oi in zip(df["strike"], df["bid"], df["ask"],
+                                          df["lastPrice"], df["openInterest"]):
+        try:
+            strike = float(strike); oi = float(oi or 0)
+        except (TypeError, ValueError):
+            continue
+        if oi < 1:
+            continue
+        mid = _mid(bid, ask, last)
+        if not mid or mid <= 0:
+            continue
+        rows.append({"strike": strike, "mid": mid, "oi": oi})
+    rows.sort(key=lambda r: r["strike"])
+    return rows
+
+
+def _spread(symbol, right, equity, budget_pct, min_dte, max_dte, target=None):
+    """Vertical DEBIT spread: buy near-ATM, sell at/near the thesis TARGET (same
+    expiry). Defined + REDUCED risk (max loss = net debit), much less theta than a
+    naked long. The short strike is anchored to the ATR target so the width matches
+    the move we actually expect — no fantasy far-OTM 'max gain'."""
+    import yfinance as yf
+    is_call = right.upper().startswith("C")
+    tk = yf.Ticker(symbol)
+    try:
+        spot = float(tk.fast_info.get("lastPrice") or tk.fast_info.get("last_price"))
+    except Exception:
+        spot = None
+    if not spot:
+        return {"symbol": symbol.upper(), "error": "no spot price"}
+    exps = list(getattr(tk, "options", []) or [])
+    if not exps:
+        return {"symbol": symbol.upper(), "error": "no options listed"}
+    today = date.today()
+    def dte(e):
+        return (datetime.strptime(e, "%Y-%m-%d").date() - today).days
+    in_range = [e for e in exps if min_dte <= dte(e) <= max_dte]
+    exp = (in_range or sorted(exps, key=dte))[0]
+    days = dte(exp)
+    try:
+        ch = tk.option_chain(exp)
+        rows = _chain_rows(ch.calls if is_call else ch.puts)
+    except Exception as e:
+        return {"symbol": symbol.upper(), "error": f"chain fetch failed: {e}"}
+    if len(rows) < 2:
+        return {"symbol": symbol.upper(), "expiry": exp, "error": "chain too thin for a spread"}
+
+    # long leg: nearest to ATM
+    longs = sorted(rows, key=lambda r: abs(r["strike"] - spot))
+    lng = longs[0]
+    budget = equity * budget_pct
+    # short leg anchored to the thesis target (the move we actually expect). Calls:
+    # strikes above the long, up to the target. Puts: strikes below, down to target.
+    if target is None:
+        target = spot * (1.06 if is_call else 0.94)   # fallback ~one ATR-ish move
+    if is_call:
+        shorts = [r for r in rows if lng["strike"] < r["strike"] <= target * 1.02]
+        if not shorts:                                # target too tight → nearest above
+            shorts = [r for r in rows if r["strike"] > lng["strike"]][:1]
+    else:
+        shorts = [r for r in rows if target * 0.98 <= r["strike"] < lng["strike"]]
+        if not shorts:
+            shorts = [r for r in rows if r["strike"] < lng["strike"]][-1:]
+    best = None
+    for sh in shorts:
+        net_debit = round(lng["mid"] - sh["mid"], 2)
+        if net_debit <= 0:                      # must be a real debit
+            continue
+        width = abs(sh["strike"] - lng["strike"])
+        cost_pc = round(net_debit * 100, 2)
+        if cost_pc > budget * 1.05:             # keep one spread within budget
+            continue
+        max_gain_pc = round((width - net_debit) * 100, 2)
+        rr = round(max_gain_pc / cost_pc, 2) if cost_pc else 0
+        cand = {"short": sh, "net_debit": net_debit, "width": width,
+                "cost_pc": cost_pc, "max_gain_pc": max_gain_pc, "rr": rr}
+        # widest spread within the expected move that still fits budget = most upside captured
+        if best is None or cand["width"] > best["width"]:
+            best = cand
+    if best is None:
+        return {"symbol": symbol.upper(), "spot": round(spot, 2), "expiry": exp,
+                "error": "no debit spread fits this budget (underlying too expensive for $%.0f)" % equity}
+    cost_pc = best["cost_pc"]
+    contracts = max(1, int(budget // cost_pc)) if cost_pc <= budget else 1
+    max_loss = round(cost_pc * contracts, 2)
+    max_gain = round(best["max_gain_pc"] * contracts, 2)
+    if is_call:
+        breakeven = round(lng["strike"] + best["net_debit"], 2)
+    else:
+        breakeven = round(lng["strike"] - best["net_debit"], 2)
+    return {
+        "symbol": symbol.upper(), "spot": round(spot, 2), "expiry": exp, "dte": days,
+        "type": ("BULL CALL" if is_call else "BEAR PUT") + " DEBIT SPREAD", "right": right.upper()[0],
+        "long_strike": lng["strike"], "short_strike": best["short"]["strike"], "width": best["width"],
+        "net_debit": best["net_debit"], "cost_per_spread": cost_pc, "contracts": contracts,
+        "max_loss": max_loss, "max_gain": max_gain, "rr": best["rr"],
+        "pct_of_equity": round(max_loss / equity * 100, 1), "breakeven": breakeven,
+        "vs_naked": f"max loss ${max_loss:.0f} (net debit) vs a naked {right.upper()[0]} that could "
+                    f"lose its full premium; spread also bleeds far less theta",
+        "warning": "Defined + reduced risk. Gains CAPPED at the short strike. Both legs share an expiry.",
+        "generated_at": datetime.now().astimezone().isoformat(),
+    }
+
+
+def best_call_spread(symbol, equity=500.0, budget_pct=0.30, min_dte=30, max_dte=45, target=None):
+    return _spread(symbol, "C", equity, budget_pct, min_dte, max_dte, target)
+
+
+def best_put_spread(symbol, equity=500.0, budget_pct=0.30, min_dte=30, max_dte=45, target=None):
+    return _spread(symbol, "P", equity, budget_pct, min_dte, max_dte, target)
+
+
+def spread_value(symbol, expiry, long_strike, short_strike, right="C"):
+    """Current net value (per share) of an open debit spread = long mid - short mid."""
+    lp = option_price(symbol, expiry, long_strike, right)
+    sp = option_price(symbol, expiry, short_strike, right)
+    if lp is None or sp is None:
+        return None
+    return round(lp - sp, 2)
+
+
 def best_put(symbol, equity=500.0, budget_pct=0.30, min_dte=5, max_dte=21):
     """Bearish play — catch a DROP with defined risk. Picks a liquid near-ATM put.
     Same engine as best_call, mirrored to the downside."""

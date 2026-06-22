@@ -115,6 +115,46 @@ def place_option_order(symbol, expiry, strike, right, qty, limit_price, action="
         ib.disconnect()
 
 
+def place_option_spread(symbol, expiry, long_strike, short_strike, right, qty,
+                        long_price, short_price, action="OPEN"):
+    """Place a vertical DEBIT spread on a paper (DU) account by legging in two
+    options (BUY the long strike, SELL the short strike). action 'OPEN' buys the
+    spread; 'CLOSE' reverses (sell the long, buy back the short). Same safety gate."""
+    from ib_async import Option, LimitOrder
+    ib = _connect(client_id=92)
+    try:
+        accts = ib.managedAccounts()
+        acct = accts[0] if accts else ""
+        if not acct.upper().startswith("DU"):
+            return {"ok": False, "blocked": True, "account": acct,
+                    "error": f"SAFETY GATE: refusing to trade non-paper account '{acct}'."}
+        exp = expiry.replace("-", "")
+        r = right.upper()[0]
+        long_act = "BUY" if action.upper() == "OPEN" else "SELL"
+        short_act = "SELL" if action.upper() == "OPEN" else "BUY"
+        out = {}
+        for leg, strike, act, px in (("long", long_strike, long_act, long_price),
+                                     ("short", short_strike, short_act, short_price)):
+            c = Option(symbol.upper(), exp, float(strike), r, "SMART")
+            c.multiplier = "100"
+            ib.qualifyContracts(c)
+            lp = round(float(px) * (1.10 if act == "BUY" else 0.90), 2)
+            o = LimitOrder(act, abs(int(qty)), lp); o.tif = "DAY"
+            t = ib.placeOrder(c, o); ib.sleep(4)
+            out[leg] = {"action": act, "strike": strike, "status": t.orderStatus.status,
+                        "filled": t.orderStatus.filled, "avg_fill": t.orderStatus.avgFillPrice}
+        lf = out["long"]; sf = out["short"]
+        both = bool(lf["filled"]) and bool(sf["filled"])
+        net = None
+        if lf["avg_fill"] and sf["avg_fill"]:
+            net = round(float(lf["avg_fill"]) - float(sf["avg_fill"]), 2)
+        return {"ok": True, "account": acct, "symbol": symbol.upper(),
+                "spread": f"{symbol.upper()} {expiry} {long_strike}/{short_strike}{r}",
+                "filled": both, "net_debit": net, "legs": out}
+    finally:
+        ib.disconnect()
+
+
 def fills():
     """Authoritative IBKR order/fill history from the connected account — proof of
     what actually executed (vs our own ledger)."""
