@@ -179,7 +179,9 @@ def _spread(symbol, right, equity, budget_pct, min_dte, max_dte, target=None):
         shorts = [r for r in rows if target * 0.98 <= r["strike"] < lng["strike"]]
         if not shorts:
             shorts = [r for r in rows if r["strike"] < lng["strike"]][-1:]
+    MIN_RR = 1.0          # never pay near-full width: reward must >= risk
     best = None
+    rejected = 0
     for sh in shorts:
         net_debit = round(lng["mid"] - sh["mid"], 2)
         if net_debit <= 0:                      # must be a real debit
@@ -190,14 +192,18 @@ def _spread(symbol, right, equity, budget_pct, min_dte, max_dte, target=None):
             continue
         max_gain_pc = round((width - net_debit) * 100, 2)
         rr = round(max_gain_pc / cost_pc, 2) if cost_pc else 0
+        if rr < MIN_RR:                         # reject 'paid almost full width' junk
+            rejected += 1
+            continue
         cand = {"short": sh, "net_debit": net_debit, "width": width,
                 "cost_pc": cost_pc, "max_gain_pc": max_gain_pc, "rr": rr}
-        # widest spread within the expected move that still fits budget = most upside captured
-        if best is None or cand["width"] > best["width"]:
+        # among spreads with acceptable reward:risk, take the most absolute upside
+        if best is None or cand["max_gain_pc"] > best["max_gain_pc"]:
             best = cand
     if best is None:
-        return {"symbol": symbol.upper(), "spot": round(spot, 2), "expiry": exp,
-                "error": "no debit spread fits this budget (underlying too expensive for $%.0f)" % equity}
+        why = ("no spread with reward>=risk (strikes too pricey/illiquid for a clean %0.1f:1)" % MIN_RR
+               if rejected else "no debit spread fits this budget (underlying too expensive for $%.0f)" % equity)
+        return {"symbol": symbol.upper(), "spot": round(spot, 2), "expiry": exp, "error": why}
     cost_pc = best["cost_pc"]
     contracts = max(1, int(budget // cost_pc)) if cost_pc <= budget else 1
     max_loss = round(cost_pc * contracts, 2)
