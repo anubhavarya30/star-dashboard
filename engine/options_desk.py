@@ -25,6 +25,14 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, ".."))
 STATE = os.path.join(HERE, "..", "data", "options_state.json")
 
+# IBKR paper account DUQ923304 is options Level 1 (covered calls / cash-secured puts
+# only). Our directional debit spreads need Level 3, which IBKR DENIED on financial-
+# profile grounds (re-request allowed in 30 days). Until that clears, the options desk
+# runs SIM-ONLY at live prices — it never sends a real option order (so no Error 201
+# noise and zero risk of a half-filled spread leg). The STOCK desk still trades REAL
+# on IBKR. Flip this to True the day Level 3 is approved.
+OPTIONS_LIVE = False
+
 
 def _load():
     try:
@@ -82,7 +90,7 @@ def manage():
             reason = "DTE<=7 (theta)"
         if reason:
             exitv = val if val is not None else 0.0
-            if bs.get("can_auto_trade"):
+            if OPTIONS_LIVE and bs.get("can_auto_trade"):
                 b.place_option_spread(p["symbol"], p["expiry"], p["long_strike"], p["short_strike"],
                                       right, p["contracts"],
                                       op.option_price(p["symbol"], p["expiry"], p["long_strike"], right) or 0.0,
@@ -142,10 +150,9 @@ def maybe_enter():
     if not opt:
         ps._log("no affordable spread among candidates")
         return
-    bs = ps._broker()
     via = "sim"
     debit = opt["net_debit"]
-    if bs.get("can_auto_trade"):
+    if OPTIONS_LIVE and ps._broker().get("can_auto_trade"):
         lpx = op.option_price(sym, opt["expiry"], opt["long_strike"], right) or opt["net_debit"]
         spx = op.option_price(sym, opt["expiry"], opt["short_strike"], right) or 0.0
         r = b.place_option_spread(sym, opt["expiry"], opt["long_strike"], opt["short_strike"],
@@ -153,9 +160,6 @@ def maybe_enter():
         if r.get("filled") and r.get("net_debit"):
             debit = r["net_debit"]; via = "ibkr"
         else:
-            # IBKR refused/failed (e.g. TWS disclaimer 10141) — do NOT silently skip.
-            # Record the trade on the simulator (clearly labelled) so the strategy is
-            # always tracked and visible, then surface why the real fill didn't land.
             ps._log(f"spread not IBKR-filled {sym} ({r.get('error') or r.get('blocked') or r.get('legs')}) — recording SIM")
             via = "sim"
     max_loss = round(debit * 100 * opt["contracts"], 2)
