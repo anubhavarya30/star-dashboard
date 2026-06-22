@@ -438,6 +438,11 @@ class Handler(BaseHTTPRequestHandler):
                     import news_watch
                     return news_watch.assess()
                 return self._send_json(cached("news_watch", _nw, ttl=1200))
+            if u.path == "/api/options_desk":
+                def _od():
+                    import options_desk
+                    return options_desk.stats()
+                return self._send_json(cached("options_desk", _od, ttl=30))
             if u.path == "/api/calendar":
                 import market_calendar as mcal
                 return self._send_json(mcal.status())

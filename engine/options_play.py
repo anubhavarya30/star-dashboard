@@ -97,6 +97,22 @@ def best_call(symbol, equity=500.0, budget_pct=0.30, min_dte=5, max_dte=21):
     }
 
 
+def option_price(symbol, expiry, strike, right="C"):
+    """Current mid price of a specific option contract (yfinance chain). For exits."""
+    import yfinance as yf
+    try:
+        ch = yf.Ticker(symbol).option_chain(expiry)
+        df = ch.calls if right.upper().startswith("C") else ch.puts
+        row = df[df["strike"] == float(strike)]
+        if len(row) == 0:
+            return None
+        bid = float(row["bid"].iloc[0] or 0); ask = float(row["ask"].iloc[0] or 0)
+        last = float(row["lastPrice"].iloc[0] or 0)
+        return round((bid + ask) / 2, 2) if (bid > 0 and ask > 0) else (round(ask or last, 2) or None)
+    except Exception:
+        return None
+
+
 def best_put(symbol, equity=500.0, budget_pct=0.30, min_dte=5, max_dte=21):
     """Bearish play — catch a DROP with defined risk. Picks a liquid near-ATM put.
     Same engine as best_call, mirrored to the downside."""

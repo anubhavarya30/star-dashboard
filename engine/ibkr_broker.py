@@ -85,6 +85,36 @@ def place_order(symbol, qty, action="BUY", order_type="MKT", limit_price=None):
         ib.disconnect()
 
 
+def place_option_order(symbol, expiry, strike, right, qty, limit_price, action="BUY"):
+    """Place an OPTION order on a verified paper (DU) account. Same safety gate.
+    expiry 'YYYY-MM-DD', right 'C'/'P', limit_price from the option chain (we have
+    no IBKR option data, so the caller prices it off yfinance)."""
+    from ib_async import Option, LimitOrder
+    ib = _connect(client_id=91)
+    try:
+        accts = ib.managedAccounts()
+        acct = accts[0] if accts else ""
+        if not acct.upper().startswith("DU"):
+            return {"ok": False, "blocked": True, "account": acct,
+                    "error": f"SAFETY GATE: refusing to trade non-paper account '{acct}'."}
+        exp = expiry.replace("-", "")  # ib wants YYYYMMDD
+        contract = Option(symbol.upper(), exp, float(strike), right.upper()[0], "SMART")
+        contract.multiplier = "100"
+        ib.qualifyContracts(contract)
+        # marketable limit to cross the (wide) option spread on a paper fill
+        lp = round(float(limit_price) * (1.10 if action.upper() == "BUY" else 0.90), 2)
+        order = LimitOrder(action, abs(int(qty)), lp)
+        order.tif = "DAY"
+        trade = ib.placeOrder(contract, order)
+        ib.sleep(5)
+        return {"ok": True, "account": acct, "symbol": symbol.upper(),
+                "contract": f"{symbol.upper()} {expiry} {strike}{right.upper()[0]}",
+                "action": action, "qty": int(qty), "status": trade.orderStatus.status,
+                "filled": trade.orderStatus.filled, "avg_fill": trade.orderStatus.avgFillPrice}
+    finally:
+        ib.disconnect()
+
+
 def fills():
     """Authoritative IBKR order/fill history from the connected account — proof of
     what actually executed (vs our own ledger)."""
