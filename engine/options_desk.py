@@ -53,16 +53,27 @@ def manage():
         return
     bs = ps._broker()
     for p in list(s["open"]):
+        right = p.get("right", "C")
+        is_put = right.upper().startswith("P")
         px = _underlying(p["symbol"])
-        opx = op.option_price(p["symbol"], p["expiry"], p["strike"], "C")
+        opx = op.option_price(p["symbol"], p["expiry"], p["strike"], right)
         if px is None:
             continue
         dte = (datetime.strptime(p["expiry"], "%Y-%m-%d").date() - date.today()).days
         reason = None
-        if px <= p["under_stop"]:
-            reason = "underlying stop"
-        elif px >= p["under_target"]:
-            reason = "underlying target"
+        if is_put:
+            # bearish: stop is ABOVE entry, target is BELOW
+            if px >= p["under_stop"]:
+                reason = "underlying stop"
+            elif px <= p["under_target"]:
+                reason = "underlying target"
+        else:
+            if px <= p["under_stop"]:
+                reason = "underlying stop"
+            elif px >= p["under_target"]:
+                reason = "underlying target"
+        if reason:
+            pass
         elif opx is not None and opx <= p["premium"] * 0.5:
             reason = "option -50%"
         elif opx is not None and opx >= p["premium"] * 2.0:
@@ -72,13 +83,13 @@ def manage():
         if reason:
             exitp = opx if opx is not None else 0.0
             if bs.get("can_auto_trade"):
-                b.place_option_order(p["symbol"], p["expiry"], p["strike"], "C", p["contracts"], exitp, action="SELL")
+                b.place_option_order(p["symbol"], p["expiry"], p["strike"], right, p["contracts"], exitp, action="SELL")
             pnl = round((exitp - p["premium"]) * 100 * p["contracts"], 2)
             s["realized"] = round(s["realized"] + pnl, 2); s["trades"] += 1
             s["wins"] += 1 if pnl > 0 else 0
             s["open"].remove(p); _save(s)
             _rec_db({**p, "exit": exitp, "pnl": pnl, "closed_at": datetime.now().isoformat()})
-            ps._alert(f"{'🟢' if pnl>=0 else '🔴'} OPTION EXIT — {p['symbol']} {p['strike']}C "
+            ps._alert(f"{'🟢' if pnl>=0 else '🔴'} OPTION EXIT — {p['symbol']} {p['strike']}{right.upper()[0]} "
                       f"({reason}) {'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
 
 
@@ -87,38 +98,55 @@ def maybe_enter():
     s = _load()
     if len(s["open"]) >= 1:           # one option position at a time ($500)
         return
+
+    # News-driven direction. Risk-off ("high") does NOT mean sit out — it means the
+    # tape is selling, so we hunt the WEAKEST name and buy PUTS to profit on the drop.
+    # Calm tape ("low"/"med") → bullish 9-vote → CALLS. Defined risk either way.
+    risk_off = False
     try:
-        nw = __import__("news_watch").assess()
-        if nw.get("risk_level") == "high":
-            return
+        risk_off = __import__("news_watch").assess().get("risk_level") == "high"
     except Exception:
         pass
-    pick = ss.best_pick(min_score=6)   # slightly stricter for the leveraged play
-    if (pick.get("risk") or {}).get("verdict") != "APPROVED":
-        return
-    sym = pick["symbol"]
-    if earnings.blocked(sym, within=5)["blocked"]:
-        return
-    plan = pick["risk"]["plan"]
-    opt = op.best_call(sym, min_dte=30, max_dte=45)   # swing-appropriate, low theta
+
+    if risk_off:
+        pick = ss.worst_pick(min_score=6)
+        sym = pick.get("symbol")
+        if not sym:
+            return
+        if earnings.blocked(sym, within=5)["blocked"]:
+            return
+        plan = pick["plan"]
+        opt = op.best_put(sym, min_dte=30, max_dte=45)
+        right, glyph = "P", "🔻"
+    else:
+        pick = ss.best_pick(min_score=6)   # slightly stricter for the leveraged play
+        if (pick.get("risk") or {}).get("verdict") != "APPROVED":
+            return
+        sym = pick["symbol"]
+        if earnings.blocked(sym, within=5)["blocked"]:
+            return
+        plan = pick["risk"]["plan"]
+        opt = op.best_call(sym, min_dte=30, max_dte=45)   # swing-appropriate, low theta
+        right, glyph = "C", "🟢"
+
     if opt.get("error") or not opt.get("strike"):
         return
     bs = ps._broker()
     via = "sim"
     if bs.get("can_auto_trade"):
-        r = b.place_option_order(sym, opt["expiry"], opt["strike"], "C", opt["contracts"], opt["premium"])
+        r = b.place_option_order(sym, opt["expiry"], opt["strike"], right, opt["contracts"], opt["premium"])
         if not (r.get("filled") and r.get("avg_fill")):
             ps._log(f"option buy not filled {sym} ({r.get('status') or r.get('error')})")
             return
         prem = round(float(r["avg_fill"]), 2); via = "ibkr"
     else:
         prem = opt["premium"]
-    pos = {"symbol": sym, "strike": opt["strike"], "expiry": opt["expiry"], "right": "C",
+    pos = {"symbol": sym, "strike": opt["strike"], "expiry": opt["expiry"], "right": right,
            "contracts": opt["contracts"], "premium": prem,
            "under_entry": plan["entry"], "under_stop": plan["stop"], "under_target": plan["target"],
            "max_loss": round(prem * 100 * opt["contracts"], 2), "opened_at": datetime.now().isoformat()}
     s["open"].append(pos); _save(s)
-    ps._alert(f"🟢 OPTION ENTRY[{via}] {sym} {opt['strike']}C exp {opt['expiry']} "
+    ps._alert(f"{glyph} OPTION ENTRY[{via}] {sym} {opt['strike']}{right} exp {opt['expiry']} "
               f"x{opt['contracts']} @ ${prem} (max loss ${pos['max_loss']}, {opt.get('leverage')}x) "
               f"· {pick.get('thesis','')[:45]}")
 

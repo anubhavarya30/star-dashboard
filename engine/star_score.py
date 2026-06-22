@@ -109,6 +109,68 @@ def risk_levels(price, atr):
     return round(price - atr * 1.5, 2), round(price + atr * 3.75, 2)   # 2.5:1 R:R
 
 
+def short_risk_levels(price, atr):
+    """Bearish mirror: stop ABOVE, target BELOW. Same 2.5:1 R:R."""
+    return round(price + atr * 1.5, 2), round(price - atr * 3.75, 2)
+
+
+def tech_score_short(prices, volumes=None):
+    """9-vote DOWNSIDE score (0-9). Faithful inverse of the bullish screener — for
+    risk-off days we buy PUTS on the weakest name instead of sitting out."""
+    if len(prices) < 60:
+        return 0, {}
+    c = prices[-1]
+    e8 = ema(prices, 8); e21 = ema(prices, 21); e50 = ema(prices, 50); e200 = ema(prices, 200)
+    r14 = rsi(prices, 14); _atr = atr_v(prices, 14); adx = adx_p(prices, 14)
+    mh = macd_h(prices); mom = momentum_pct(prices, 20)
+    vsurge = vol_ratio(volumes) if volumes else 1.0
+    votes = {
+        "below_200ema": c < e200,
+        "ema_stack_down": e8 < e21 < e50,
+        "ema8_21_cross_down": e8 < e21,
+        "macd_bearish": mh < 0,
+        "rsi_weak": 28 < r14 < 50,
+        "adx_trending": adx > 22,                    # strong trend cuts both ways
+        "momentum_neg": mom < -1.5,
+        "vol_surge": vsurge > 1.25,                  # heavy volume on the way down
+        "near_ema21_below": c < e21 and c > e21 * 0.96,  # tight bounce into resistance = short entry
+    }
+    score = sum(1 for v in votes.values() if v)
+    return score, {"price": round(c, 2), "rsi": round(r14, 1), "adx": round(adx, 1),
+                   "mom": round(mom, 2), "atr": round(_atr, 2), "vol_surge": round(vsurge, 2),
+                   "votes": votes}
+
+
+def worst_pick(min_score=6):
+    """Weakest name in the universe with a clean downside setup (>= min_score bearish
+    votes). For PUT plays — defined risk = premium, so no share-risk gate needed.
+    Returns symbol + underlying plan (entry, stop ABOVE, target BELOW)."""
+    rows = []
+    for sym in UNIVERSE:
+        try:
+            closes, vols = _series(sym)
+            if not closes:
+                continue
+            score, ind = tech_score_short(closes, vols)
+            if score < min_score:
+                continue
+            stop, target = short_risk_levels(ind["price"], ind["atr"])
+            rr = round((ind["price"] - target) / (stop - ind["price"]), 1) if stop > ind["price"] else 0
+            reasons = [k.replace("_", " ") for k, v in ind["votes"].items() if v]
+            rows.append({"symbol": sym.upper(), "score": score, "price": ind["price"],
+                         "atr": ind["atr"], "stop": stop, "target": target, "rr": rr,
+                         "reasons": reasons})
+        except Exception:
+            pass
+    rows.sort(key=lambda r: (r["score"], r["rr"]), reverse=True)
+    if not rows:
+        return {"symbol": None, "plan": {}, "thesis": "no name scored >= bearish threshold"}
+    c = rows[0]
+    return {"symbol": c["symbol"], "score": c["score"], "rr": c["rr"],
+            "plan": {"entry": c["price"], "stop": c["stop"], "target": c["target"]},
+            "thesis": f"DOWNSIDE {c['score']}/9 ({', '.join(c['reasons'][:4])})"}
+
+
 def _series(sym):
     import yfinance as yf
     h = yf.Ticker(sym).history(period="1y")
