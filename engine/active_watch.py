@@ -32,6 +32,11 @@ def main():
                 ps.manage_open(force_close=(phase == "eod"))     # breakeven/trail/exit every minute
                 if phase == "open":
                     ps.maybe_enter()
+                    try:
+                        import watch_reversal           # armed long watchlist (TSM/AMD/ARM) — alert on reversal entry
+                        watch_reversal.tick()
+                    except Exception as e:
+                        ps._log(f"watch_reversal error: {type(e).__name__}: {e}")
                 if phase == "eod":
                     ps.log_daily_summary()
         except Exception as e:
