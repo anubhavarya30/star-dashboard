@@ -77,7 +77,12 @@ def place_order(symbol, qty, action="BUY", order_type="MKT", limit_price=None):
         order.tif = "DAY"
         order.outsideRth = True
         trade = ib.placeOrder(contract, order)
-        ib.sleep(4)
+        # Poll up to ~12s for the fill — a flat 4s wait under-reports fills that take
+        # a beat (seen at the open), making the desk skip a real entry.
+        for _ in range(6):
+            ib.sleep(2)
+            if trade.orderStatus.status in ("Filled", "Cancelled", "ApiCancelled"):
+                break
         return {"ok": True, "account": acct, "symbol": symbol.upper(), "action": action,
                 "qty": int(qty), "status": trade.orderStatus.status,
                 "filled": trade.orderStatus.filled, "avg_fill": trade.orderStatus.avgFillPrice}

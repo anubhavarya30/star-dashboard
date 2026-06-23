@@ -886,6 +886,7 @@ async function loadPaper(){
   let t,res,at;
   try{t=await api(`/api/paper_trades`);res=await api(`/api/paper_results`);}catch(e){$("paperResult").innerHTML='<div class="errline">Paper data unavailable.</div>';return;}
   try{at=await api(`/api/all_trades`);}catch(e){at={stats:{},trades:[]};}
+  let sp;try{sp=await api(`/api/star_pnl`);}catch(e){sp=null;}
   $("paperTime").textContent="updated "+new Date().toLocaleTimeString("en-US",{hour12:false});
   const days=res.results||[];
   const eq=days.length?parseFloat(days[days.length-1].equity_end):500;
@@ -893,13 +894,16 @@ async function loadPaper(){
   const closed=t.closed||[], open=t.open||[];
   const wins=closed.filter(c=>parseFloat(c.pnl)>0).length;
   const wr=closed.length?Math.round(wins/closed.length*100):0;
+  // ONE unified STAR P&L (stock + options + gold) — so a $0 stock day doesn't read as nothing
+  const allPnl = sp?sp.all_pnl:totalNet, todayPnl = sp?sp.today_pnl:(t.realized_today||0);
+  const bySrc = sp&&sp.by_source?Object.entries(sp.by_source).map(([k,v])=>`${k} ${v.pnl>=0?'+':''}$${fmtN(v.pnl)}`).join(" · "):'';
   // summary cards
   const cards=[
     ["Equity","$"+fmtN(eq), eq>=500?'up':'down'],
-    ["All-time P&L",(totalNet>=0?'+':'')+"$"+fmtN(totalNet),cls(totalNet)],
-    ["Realized today",(t.realized_today>=0?'+':'')+"$"+fmtN(t.realized_today),cls(t.realized_today)],
-    ["Closed trades",closed.length+"",''],
-    ["Win rate",wr+"%",''],
+    ["STAR P&L (all)",(allPnl>=0?'+':'')+"$"+fmtN(allPnl),cls(allPnl)],
+    ["STAR today",(todayPnl>=0?'+':'')+"$"+fmtN(todayPnl),cls(todayPnl)],
+    ["By source",bySrc||'—',''],
+    ["Win rate",(sp?sp.all_win_rate:wr)+"%",''],
     ["Open now",open.length+"",''],
   ].map(([k,v,c])=>`<div class="btm"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
   // timing helpers

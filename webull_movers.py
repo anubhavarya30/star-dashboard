@@ -8,13 +8,30 @@ is confirmed reachable. Returns clean rows: symbol, name, price, change_pct.
 Note: this is Webull's public quote/ranking data, independent of the
 APP_KEY/APP_SECRET (those are for the official OpenAPI, not used here).
 """
-from webull import webull
+_wb = None
+_wb_tried = False
 
-_wb = webull()
+
+def _get_wb():
+    """Lazily build the Webull client. The unofficial `webull` package may not be
+    installed everywhere (e.g. the server) — degrade gracefully to None instead of
+    crashing every module that imports webull_movers (scout, breakdown_scan, etc.)."""
+    global _wb, _wb_tried
+    if _wb is None and not _wb_tried:
+        _wb_tried = True
+        try:
+            from webull import webull
+            _wb = webull()
+        except Exception:
+            _wb = None
+    return _wb
 
 
 def _rows(direction, rank_type, count):
-    r = _wb.active_gainer_loser(direction=direction, rank_type=rank_type, count=count)
+    wb = _get_wb()
+    if wb is None:
+        return []
+    r = wb.active_gainer_loser(direction=direction, rank_type=rank_type, count=count)
     out = []
     if not isinstance(r, dict):
         return out

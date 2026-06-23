@@ -219,16 +219,28 @@ def scan(min_score=5):
     return {"ranked": ranked, "scanned": len(UNIVERSE)}
 
 
-def best_pick(equity=None, min_score=5):
-    """Top 9-vote candidate (>=min_score), risk-sized via the risk manager."""
+def best_pick(equity=None, min_score=5, symbols=None):
+    """Top 9-vote candidate (>=min_score), risk-sized via the risk manager. If
+    `symbols` is given (the CEO watchlist), bias to those first, then fall back to
+    the full scan so the desk still trades if none of the watchlist qualifies."""
     import risk_manager as rm
     cands = scan(min_score).get("ranked", [])
-    for c in cands:
-        rk = rm.pre_trade_check(c["symbol"], c["price"], c["stop"], c["target"], equity=equity)
-        if rk.get("approved"):
-            return {"symbol": c["symbol"], "score": c["score"], "rr": c["rr"],
-                    "thesis": f"9-vote score {c['score']}/9 ({', '.join(c['reasons'][:4])})",
-                    "risk": rk}
+    pools = []
+    if symbols:
+        ws = set(symbols)
+        pools.append([c for c in cands if c["symbol"] in ws])
+    pools.append(cands)
+    seen = set()
+    for pool in pools:
+        for c in pool:
+            if c["symbol"] in seen:
+                continue
+            seen.add(c["symbol"])
+            rk = rm.pre_trade_check(c["symbol"], c["price"], c["stop"], c["target"], equity=equity)
+            if rk.get("approved"):
+                return {"symbol": c["symbol"], "score": c["score"], "rr": c["rr"],
+                        "thesis": f"9-vote score {c['score']}/9 ({', '.join(c['reasons'][:4])})",
+                        "risk": rk}
     return {"symbol": None, "risk": {"verdict": "NONE", "plan": {}},
             "thesis": "no name scored >=5 with an approved risk plan"}
 

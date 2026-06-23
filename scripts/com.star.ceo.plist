@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STAR — CEO pre-market orchestrator launch agent.
+     Runs the overnight research weekdays at 7:50am local (before the 8:30 CT open):
+     assigns the worker agents, builds the ranked watchlist + brief, Telegrams it.
+     launchd runs a missed job on wake, so a closed laptop still gets the brief.
+     Install (server rewrites __REPO__ to the real repo path):
+       sed "s#__REPO__#$PWD#g" scripts/com.star.ceo.plist > ~/Library/LaunchAgents/com.star.ceo.plist
+       launchctl bootout gui/$(id -u)/com.star.ceo 2>/dev/null
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.star.ceo.plist -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.star.ceo</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO__/scripts/ceo.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>50</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>50</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>50</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>50</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>7</integer><key>Minute</key><integer>50</integer></dict>
+    </array>
+    <key>StandardOutPath</key>
+    <string>/tmp/star_ceo.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/star_ceo.log</string>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

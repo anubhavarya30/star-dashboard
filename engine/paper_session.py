@@ -193,17 +193,24 @@ def maybe_enter():
             _log("pre-holiday session — raising entry bar to score>=7 (low volume/gap risk)")
     except Exception:
         pass
-    # macro news guard: on a major RISK-OFF day, don't open new risk (graceful if
-    # crawl4ai isn't installed — returns low risk, desk runs normally)
+    # macro news guard: on a RISK-OFF day, don't BLOCK entirely — raise the bar so
+    # only relative-strength leaders (score>=7) trade. A strong long holding up on a
+    # down tape is a fine trade; sitting out every red day = never trading.
     try:
         import news_watch
         nw = news_watch.assess()
         if nw.get("risk_level") == "high":
-            _log(f"RISK-OFF pause: {nw.get('risk_off_count')} major macro headlines — no new entries")
-            return
+            min_score = max(min_score, 7)
+            _log(f"RISK-OFF: {nw.get('risk_off_count')} macro headlines — bar raised to score>=7 (relative strength only)")
     except Exception:
         pass
-    pick = star_score.best_pick(equity=rm.CFG["equity"], min_score=min_score)  # gold-bot 9-vote + 2.5:1 ATR
+    # CEO watchlist (overnight research) focuses the day's universe; falls back to full scan.
+    try:
+        import star_ceo
+        watch = star_ceo.current_watchlist()
+    except Exception:
+        watch = None
+    pick = star_score.best_pick(equity=rm.CFG["equity"], min_score=min_score, symbols=watch)  # 9-vote + 2.5:1 ATR
     plan = (pick.get("risk") or {}).get("plan") or {}
     if (pick.get("risk") or {}).get("verdict") != "APPROVED":
         _log(f"no 9-vote setup ({pick.get('symbol')}: {(pick.get('risk') or {}).get('verdict')})"); return

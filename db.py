@@ -197,6 +197,30 @@ def paper_stats():
     return out
 
 
+def star_pnl():
+    """ONE unified STAR P&L across every source (stock + options + gold). Returns
+    today's realized, all-time realized, counts, and the per-source split — so the
+    dashboard shows a single honest STAR number instead of a $0 stock tile while the
+    options desk is green."""
+    import datetime
+    rows = paper_trades_all(5000)
+    today = datetime.date.today().isoformat()
+    tot = {"date": today, "today_pnl": 0.0, "today_trades": 0, "all_pnl": 0.0,
+           "all_trades": 0, "all_wins": 0, "by_source": {}}
+    for r in rows:
+        pnl = float(r.get("pnl") or 0)
+        src = r.get("source") or "stock"
+        bs = tot["by_source"].setdefault(src, {"pnl": 0.0, "trades": 0, "wins": 0})
+        bs["pnl"] = round(bs["pnl"] + pnl, 2); bs["trades"] += 1
+        bs["wins"] += 1 if pnl > 0 else 0
+        tot["all_pnl"] = round(tot["all_pnl"] + pnl, 2); tot["all_trades"] += 1
+        tot["all_wins"] += 1 if pnl > 0 else 0
+        if str(r.get("closed_at", ""))[:10] == today:
+            tot["today_pnl"] = round(tot["today_pnl"] + pnl, 2); tot["today_trades"] += 1
+    tot["all_win_rate"] = round(tot["all_wins"] / tot["all_trades"] * 100, 1) if tot["all_trades"] else 0
+    return tot
+
+
 def round_trips(limit: int = 200):
     """Pair real IBKR fills (BOT->SLD, FIFO per symbol) into round-trip trades
     with entry time, exit time, and HOLD DURATION — the real-trading equivalent of

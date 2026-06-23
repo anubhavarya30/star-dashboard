@@ -413,6 +413,16 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/all_trades":
                 return self._send_json({"trades": db.paper_trades_all(int(q.get("limit",["500"])[0])),
                                         "stats": db.paper_stats()})
+            if u.path == "/api/star_pnl":
+                return self._send_json(db.star_pnl())
+            if u.path == "/api/ceo":
+                def _ceo():
+                    import glob, json as _j, os as _os
+                    files = sorted(glob.glob(_os.path.join("data", "premarket", "ceo_*.json")))
+                    if not files:
+                        return {"error": "no CEO brief yet — runs pre-market (com.star.ceo) or via star_ceo.research()"}
+                    return _j.load(open(files[-1]))
+                return self._send_json(cached("ceo", _ceo, ttl=60))
             if u.path == "/api/gold":
                 def _g():
                     import gold
