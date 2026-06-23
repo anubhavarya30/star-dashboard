@@ -82,7 +82,7 @@ def assess(sym):
     }
 
 
-PER_TRADE_BUDGET = 150.0     # $ allocated per option play (tunable — these are pricey names)
+PER_TRADE_BUDGET = 300.0     # $ allocated per option play (user-set 2026-06-23 for TSM/AMD/ARM)
 
 
 def _alert_entry(a):
