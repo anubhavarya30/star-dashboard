@@ -33,6 +33,13 @@ STATE = os.path.join(HERE, "..", "data", "options_state.json")
 # on IBKR. Flip this to True the day Level 3 is approved.
 OPTIONS_LIVE = False
 
+# Learning mode: this desk is pure SIM to build the dataset and sharpen STAR. Run
+# several concurrent spreads so we generate more sample/day, and stay SILENT (no
+# Webull-ticket spam) since we place none of these — they just feed the DB. The
+# armed reversal watcher (TSM/AMD/ARM) is what actually pings the phone.
+MAX_OPEN = 4
+SEND_TICKETS = False
+
 
 def _load():
     try:
@@ -103,19 +110,20 @@ def manage():
             _rec_db({**p, "exit": exitv, "pnl": pnl, "closed_at": datetime.now().isoformat()})
             ps._log(f"SPREAD EXIT {p['symbol']} {p['long_strike']}/{p['short_strike']}{right.upper()[0]} "
                     f"({reason}) {'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
-            # Telegram a Webull CLOSE ticket (you tap it to close on Webull).
-            try:
-                import webull_ticket
-                webull_ticket.exit_ticket(p, reason, exitv, pnl)
-            except Exception as e:
-                ps._log(f"webull exit ticket failed: {e}")
+            if SEND_TICKETS:
+                try:
+                    import webull_ticket
+                    webull_ticket.exit_ticket(p, reason, exitv, pnl)
+                except Exception as e:
+                    ps._log(f"webull exit ticket failed: {e}")
 
 
 def maybe_enter():
     import paper_session as ps, star_score as ss, options_play as op, ibkr_broker as b, earnings
     s = _load()
-    if len(s["open"]) >= 1:           # one option position at a time ($500)
+    if len(s["open"]) >= MAX_OPEN:     # run several concurrent sim spreads for sample
         return
+    open_syms = {p["symbol"] for p in s["open"]}
 
     # News-driven direction. Risk-off ("high") does NOT mean sit out — it means the
     # tape is selling, so we hunt the WEAKEST name and buy PUTS to profit on the drop.
@@ -146,6 +154,8 @@ def maybe_enter():
 
     sym = plan = opt = None
     for c in cands:
+        if c["symbol"] in open_syms:                      # don't double-up the same name
+            continue
         if earnings.blocked(c["symbol"], within=5)["blocked"]:
             continue
         o = mk(c["symbol"], min_dte=30, max_dte=45, target=c["plan"]["target"])
@@ -173,16 +183,17 @@ def maybe_enter():
            "width": opt["width"], "net_debit": debit, "contracts": opt["contracts"],
            "max_loss": max_loss, "max_gain": opt["max_gain"], "rr": opt["rr"],
            "under_entry": plan["entry"], "under_stop": plan["stop"], "under_target": plan["target"],
+           "thesis": pick.get("thesis", ""), "regime": "risk-off" if risk_off else "calm",
            "opened_at": datetime.now().isoformat()}
     s["open"].append(pos); _save(s)
     ps._log(f"SPREAD ENTRY[{via}] {sym} {opt['long_strike']}/{opt['short_strike']}{right} "
-            f"x{opt['contracts']} @ ${debit} (maxloss ${max_loss} maxgain ${opt['max_gain']} {opt['rr']}:1)")
-    # Semi-manual real execution: Telegram a ready-to-place Webull ticket (you tap it).
-    try:
-        import webull_ticket
-        webull_ticket.entry_ticket(pos, pick.get("thesis", ""))
-    except Exception as e:
-        ps._log(f"webull entry ticket failed: {e}")
+            f"x{opt['contracts']} @ ${debit} (maxloss ${max_loss} maxgain ${opt['max_gain']} {opt['rr']}:1) · {pos['thesis'][:40]}")
+    if SEND_TICKETS:
+        try:
+            import webull_ticket
+            webull_ticket.entry_ticket(pos, pick.get("thesis", ""))
+        except Exception as e:
+            ps._log(f"webull entry ticket failed: {e}")
 
 
 def _rec_db(p):
@@ -194,6 +205,7 @@ def _rec_db(p):
                                "symbol": f"{p['symbol']} {p['long_strike']}/{p['short_strike']}{r}",
                                "dir": kind, "shares": p.get("contracts"), "entry": p.get("net_debit"),
                                "exit": p.get("exit"), "pnl": p.get("pnl"),
+                               "notes": f"{p.get('regime','')} | {p.get('thesis','')}",
                                "opened_at": p.get("opened_at"), "closed_at": p.get("closed_at")})
     except Exception:
         pass
