@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STAR — intraday scalp desk (sim). Oversold-bounce scalps every 2 min during
+     market hours. Install (server rewrites __REPO__):
+       sed "s#__REPO__#$PWD#g" scripts/com.star.scalp.plist > ~/Library/LaunchAgents/com.star.scalp.plist
+       launchctl bootout gui/$(id -u)/com.star.scalp 2>/dev/null
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.star.scalp.plist -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.star.scalp</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO__/scripts/scalp.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>120</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/star_scalp.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/star_scalp.log</string>
+</dict>
+</plist>

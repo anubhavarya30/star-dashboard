@@ -415,6 +415,11 @@ class Handler(BaseHTTPRequestHandler):
                                         "stats": db.paper_stats()})
             if u.path == "/api/star_pnl":
                 return self._send_json(db.star_pnl())
+            if u.path == "/api/scalp":
+                def _sc():
+                    import scalp_desk
+                    return scalp_desk.stats()
+                return self._send_json(cached("scalp", _sc, ttl=20))
             if u.path == "/api/ceo":
                 def _ceo():
                     import glob, json as _j, os as _os
