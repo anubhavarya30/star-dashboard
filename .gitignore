@@ -30,6 +30,5 @@ data/gex_history.csv
 data/morning_report.txt
 data/premarket/
 
-# DB backups: ignore bulky local snapshots, keep only the offsite gz
-backups/star_2*.db
-backups/daily_*.db
+# DB backups: local only (a constantly-changing binary doesn't belong in git)
+backups/
