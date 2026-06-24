@@ -2,6 +2,19 @@
 
 _Last updated: 2026-06-10_
 
+## ⏳ AFTER MARKET CLOSE TODAY (2026-06-24) — user-requested, do NOT do during market hours
+**Main dashboard page redesign — surface the nightly CEO market read.**
+- REMOVE the account-value + trade-history block from the bottom of the main page.
+- ADD a polished "Market Read" section at the bottom: the CEO's nightly research
+  narrative — indices + % moves (Nasdaq/S&P/Dow/VIX), risk regime, the rotation
+  read (tech-out / value-in), why the watchlist was armed, and the 3 armed names
+  (TSM/AMD/ARM) with RSI/trigger state. Prose like the 2026-06-24 chat summary.
+- Use the **ui-ux-pro** skill for the design (clean, scannable cards/sections).
+- Make it AUTOMATIC: have `star_ceo.research()` also generate a `narrative` field
+  (the prose market read) saved to the CEO json, and the dashboard renders it. So it
+  refreshes every night's 7:50 CT run, no manual writing.
+
+
 ## ✅ Done & working (real, verified)
 
 **Live terminal (http://localhost:8080)**
