@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- STAR — hourly DB backup. Snapshots star_trading.db to backups/ so the learning
+     dataset survives disk failure/corruption. Install (server rewrites __REPO__):
+       sed "s#__REPO__#$PWD#g" scripts/com.star.dbbackup.plist > ~/Library/LaunchAgents/com.star.dbbackup.plist
+       launchctl bootout gui/$(id -u)/com.star.dbbackup 2>/dev/null
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.star.dbbackup.plist -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.star.dbbackup</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__REPO__/scripts/db_backup.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/star_dbbackup.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/star_dbbackup.log</string>
+</dict>
+</plist>
