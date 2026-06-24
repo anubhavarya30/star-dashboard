@@ -1,0 +1,9 @@
+{
+  "_README": "Copy this to data/webull_config.json (same folder) ON THE SERVER and fill in your real Webull login. That file is gitignored and never leaves the server. Do NOT put real creds in this template, and never paste them in chat.",
+  "email": "YOUR_WEBULL_EMAIL_OR_PHONE",
+  "password": "YOUR_WEBULL_PASSWORD",
+  "trade_pin": "YOUR_6_DIGIT_TRADE_PIN",
+  "mfa": "",
+  "_mfa_note": "Leave mfa blank for the first try. If login asks for MFA, run the login helper to request a code, put the 6-digit code here, and log in once. After that the saved session/device-id avoids re-MFA.",
+  "trading_mode": "paper"
+}

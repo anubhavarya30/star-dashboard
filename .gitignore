@@ -32,3 +32,7 @@ data/premarket/
 
 # DB backups: local only (a constantly-changing binary doesn't belong in git)
 backups/
+
+# Webull creds (NEVER commit)
+data/webull_config.json
+data/webull_session.json
