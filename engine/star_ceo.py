@@ -78,9 +78,15 @@ def research(max_watch=6):
             if risk_level == "high" else
             "constructive — trade the strongest 9-vote longs (score>=5)")
 
+    idx = _agent("indices", _indices, default=[])
+    rev_state = {k: {"price": v.get("price"), "rsi": v.get("rsi"),
+                     "trigger": v.get("trigger"), "note": v.get("note")}
+                 for k, v in reversal.items() if isinstance(v, dict)}
     out = {"date": datetime.now().strftime("%Y-%m-%d"),
            "generated_at": datetime.now().astimezone().isoformat(),
            "regime": risk_level, "bias": bias,
+           "indices": idx,
+           "narrative": _narrative(idx, risk_level, watch, rev_state),
            "gex_flip": (gex or {}).get("gamma_flip"), "gex_regime": (gex or {}).get("regime"),
            "watchlist": watch,
            "shorts_context": [{"symbol": s.get("symbol"), "score": s.get("score"),
@@ -93,6 +99,54 @@ def research(max_watch=6):
     _write(out)
     _telegram(out)
     return out
+
+
+def _indices():
+    """Snapshot the headline indices for the market read."""
+    import yfinance as yf
+    out = []
+    for name, t in (("Nasdaq", "^IXIC"), ("S&P 500", "^GSPC"), ("Dow", "^DJI"), ("VIX", "^VIX")):
+        try:
+            h = yf.Ticker(t).history(period="2d")
+            c = float(h["Close"].iloc[-1]); p = float(h["Close"].iloc[-2])
+            out.append({"name": name, "price": round(c, 2), "chg_pct": round((c / p - 1) * 100, 2)})
+        except Exception:
+            out.append({"name": name, "price": None, "chg_pct": None})
+    return out
+
+
+def _narrative(idx, regime, watch, reversal):
+    """Auto-compose the prose market read from the agents' data — rotation analysis,
+    why the watchlist was armed, the armed names. Refreshes every nightly CEO run."""
+    d = {i["name"]: i for i in idx}
+    nas = d.get("Nasdaq", {}).get("chg_pct")
+    dow = d.get("Dow", {}).get("chg_pct")
+    spx = d.get("S&P 500", {}).get("chg_pct")
+    vix = d.get("VIX", {})
+    parts = []
+    parts.append("The tape is <b>risk-off</b>." if regime == "high" else "The tape is <b>constructive</b>.")
+    if nas is not None and dow is not None:
+        spread = nas - dow
+        if spread <= -1.0:
+            parts.append(f"Nasdaq {nas:+.1f}% vs Dow {dow:+.1f}% — the spread is the whole story: "
+                         f"money is rotating <b>out of tech, into value/defensives</b>. That's a rotation, not a random down day.")
+        elif spread >= 1.0:
+            parts.append(f"Nasdaq {nas:+.1f}% leading Dow {dow:+.1f}% — tech/growth is in favor; risk appetite is on.")
+        else:
+            parts.append(f"Nasdaq {nas:+.1f}% / Dow {dow:+.1f}% — broad move, no strong rotation either way.")
+    if vix.get("chg_pct") is not None:
+        v = vix.get("price")
+        parts.append(f"VIX {v} ({vix['chg_pct']:+.1f}%) — {'fear is building' if (vix['chg_pct'] or 0) > 8 else 'orderly, not panic'}.")
+    if watch:
+        names = ", ".join(w["symbol"] for w in watch[:6])
+        parts.append(f"STAR armed the relative-strength leaders that are holding up: <b>{names}</b> — "
+                     f"{'leaders on a weak tape' if regime == 'high' else 'the strongest 9-vote setups'}, not falling knives.")
+    else:
+        parts.append("Nothing cleared the bar — patience over forcing a bad trade.")
+    hot = [k for k, v in reversal.items() if v.get("trigger")]
+    if hot:
+        parts.append(f"Reversal TRIGGER firing on <b>{', '.join(hot)}</b>.")
+    return " ".join(parts)
 
 
 def readiness():
