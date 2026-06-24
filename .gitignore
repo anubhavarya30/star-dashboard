@@ -36,3 +36,6 @@ backups/
 # Webull creds (NEVER commit)
 data/webull_config.json
 data/webull_session.json
+
+# Dashboard password (NEVER commit)
+data/dashboard_auth.json

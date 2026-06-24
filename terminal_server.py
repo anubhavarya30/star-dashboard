@@ -272,9 +272,47 @@ def portfolio():
     return {"status": "no_data", "positions": []}
 
 
+_AUTH = {"loaded": False, "pw": None}
+
+
+def _dash_pw():
+    """Dashboard password from data/dashboard_auth.json (gitignored) or env DASH_PASS.
+    None = not configured = open (so we never lock ourselves out before it's set)."""
+    if not _AUTH["loaded"]:
+        _AUTH["loaded"] = True
+        try:
+            _AUTH["pw"] = json.load(open(HERE / "data" / "dashboard_auth.json")).get("password")
+        except Exception:
+            _AUTH["pw"] = os.environ.get("DASH_PASS")
+    return _AUTH["pw"]
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass  # quiet
+
+    def _authed(self):
+        """HTTP Basic auth for REMOTE clients. Localhost is exempt (internal health
+        checks/curls), so only LAN/Tailscale access needs the password."""
+        pw = _dash_pw()
+        if not pw:
+            return True
+        ip = self.client_address[0] if self.client_address else ""
+        if ip in ("127.0.0.1", "::1", "localhost"):
+            return True
+        import base64
+        h = self.headers.get("Authorization", "")
+        if h.startswith("Basic "):
+            try:
+                if base64.b64decode(h[6:]).decode().partition(":")[2] == pw:
+                    return True
+            except Exception:
+                pass
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="STAR"')
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+        return False
 
     def _send_json(self, obj, code=200):
         body = json.dumps(obj).encode()
@@ -300,6 +338,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        if not self._authed():
+            return
         u = urlparse(self.path)
         if u.path == "/api/sync_calendar":
             # Write today's P&L as a calendar-event payload that the Google sync
@@ -327,6 +367,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_GET(self):
+        if not self._authed():
+            return
         u = urlparse(self.path)
         q = parse_qs(u.query)
         sym = (q.get("sym", ["AAPL"])[0] or "AAPL").upper()
