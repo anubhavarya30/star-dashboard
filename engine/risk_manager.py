@@ -25,12 +25,13 @@ HERE = os.path.dirname(__file__)
 STATE = os.path.join(HERE, "..", "data", "risk_state.json")
 
 CFG = {
-    "equity": 500.0,        # Webull runner account
-    "risk_pct": 0.15,       # 15% of equity at risk per trade -> $75 (user-set, aggressive)
-    "daily_pct": 0.30,      # 30% daily max loss -> $150 (raised so a 15% trade fits)
-    "max_pos_pct": 0.90,    # one position's cost <= 90% of equity (scalp needs room)
-    "max_open": 2,          # max concurrent positions
-    "min_rr": 1.2,          # require >= 1.2R (scalps run tighter targets)
+    "equity": 5000.0,       # user adding $5k to IBKR (2026-06-25). Sized properly now —
+                            # the old 15%/30% were hacks to fit a $500 account.
+    "risk_pct": 0.05,       # 5% risk per trade -> $250 (survivable; was 15% on $500)
+    "daily_pct": 0.15,      # 15% daily max loss -> $750, then flat
+    "max_pos_pct": 0.40,    # one position's cost <= 40% of equity -> $2,000 (diversify)
+    "max_open": 3,          # up to 3 concurrent positions now that capital allows
+    "min_rr": 1.2,          # require >= 1.2R
 }
 
 
