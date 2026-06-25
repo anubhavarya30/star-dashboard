@@ -59,6 +59,30 @@
   .panel::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,166,43,.4),transparent)}
   .ph{display:flex;justify-content:space-between;align-items:center;color:var(--amber);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;padding-bottom:10px;margin-bottom:14px;border-bottom:1px solid var(--line-soft)}
   .ph .accent{display:inline-flex;align-items:center;gap:7px}
+  /* ===== Market Read ===== */
+  .mr-indices{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .mr-idx{background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:11px 13px}
+  .mr-idx-n{color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase}
+  .mr-idx-v{font-size:19px;font-weight:600;margin:3px 0;color:var(--txt);letter-spacing:.5px}
+  .mr-idx-c{font-size:12px;font-weight:600}
+  .mr-row{display:grid;grid-template-columns:1.8fr 1fr;gap:12px;margin-bottom:12px}
+  .mr-card{background:rgba(255,255,255,.018);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .mr-card-h{color:var(--amber);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .mr-narr p{line-height:1.65;color:var(--txt-2);font-size:13px;max-width:78ch;margin:0}
+  .mr-narr p b{color:var(--txt);font-weight:600}
+  .mr-regime{font-size:9px;padding:2px 9px;border-radius:11px;border:1px solid currentColor;letter-spacing:1px;white-space:nowrap}
+  .mr-chips{display:flex;flex-wrap:wrap;gap:7px}
+  .mr-chip{background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:4px 11px;font-size:12px;cursor:default;transition:border-color .2s,color .2s}
+  .mr-chip:hover{border-color:var(--amber)}
+  .mr-chip b{color:var(--amber);font-weight:600}
+  .mr-revs{display:flex;gap:10px;flex-wrap:wrap}
+  .mr-rev{display:flex;gap:9px;align-items:center;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px}
+  .mr-rev-s{font-weight:600;color:var(--txt)}
+  .mr-rev-r{color:var(--muted);font-size:12px}
+  .mr-rev-t{font-size:11px;font-weight:600;letter-spacing:.5px}
+  .mr-rev-t.muted{color:var(--muted)}
+  @media(max-width:760px){.mr-indices{grid-template-columns:repeat(2,1fr)}.mr-row{grid-template-columns:1fr}}
+  @media(prefers-reduced-motion:reduce){.mr-chip{transition:none}}
   .ph .accent::before{content:"";width:3px;height:11px;background:var(--amber);border-radius:2px;box-shadow:0 0 6px rgba(255,166,43,.6)}
   .ph .meta{color:var(--faint);letter-spacing:1px;font-weight:400}
 
@@ -451,17 +475,11 @@
     <table><thead><tr><th>Sym</th><th>Qty</th><th>Avg</th><th>Last</th><th>Value</th><th>P&amp;L</th></tr></thead><tbody id="pf"></tbody></table>
   </aside>
 
-  <!-- account value history -->
-  <section class="panel">
-    <div class="ph"><span class="accent">Account Value</span><span class="meta">net liq · 30d</span></div>
-    <div class="chart-host sm" id="acctChart"></div>
+  <!-- ===== MARKET READ (CEO nightly research) ===== -->
+  <section class="panel market-read" style="grid-column:1/-1">
+    <div class="ph"><span class="accent">Market Read</span><span class="meta" id="mrTime">STAR nightly research</span></div>
+    <div id="marketRead"><div class="empty">Loading market read…</div></div>
   </section>
-
-  <!-- trade history -->
-  <aside class="panel">
-    <div class="ph"><span class="accent">Trade History</span><span class="meta">real fills</span></div>
-    <table><thead><tr><th>Time</th><th>Sym</th><th>Side</th><th>Qty</th><th>Price</th><th>P&amp;L</th></tr></thead><tbody id="trades"></tbody></table>
-  </aside>
 </main>
 </div><!-- /view-research -->
 
@@ -702,6 +720,27 @@ async function loadTrades(){
   const d=await api(`/api/trades`),t=d.trades||[];
   $("trades").innerHTML=t.length?t.map(r=>{const buy=(r.side||"").toUpperCase().startsWith("B"),c=cls(r.realized_pnl);
     return `<tr><td style="text-align:left;color:var(--muted);font-size:11px">${(r.ts||"").slice(0,16).replace("T"," ")}</td><td class="sym">${r.symbol}</td><td class="${buy?'up':'down'}">${buy?'BUY':'SELL'}</td><td>${fmtN(r.shares,0)}</td><td>${fmtN(r.price)}</td><td class="${c}">${r.realized_pnl?(r.realized_pnl>=0?'+':'')+fmtN(r.realized_pnl):'—'}</td></tr>`;}).join(""):'<tr><td colspan="6" class="empty">No trades recorded yet — real fills appear here as the account trades.</td></tr>';
+}
+
+/* ---------- Market Read (CEO nightly research) ---------- */
+async function loadMarketRead(){
+  let d; try{d=await api(`/api/ceo`);}catch(e){$("marketRead").innerHTML='<div class="empty">Market read unavailable.</div>';return;}
+  if(!d||d.error){$("marketRead").innerHTML='<div class="empty">'+((d&&d.error)||'No CEO brief yet — runs pre-market.')+'</div>';return;}
+  $("mrTime").textContent="as of "+(d.date||"")+" · regime "+(d.regime||"");
+  const idx=(d.indices||[]).map(i=>{const c=cls(i.chg_pct);const a=i.chg_pct>0?'▲':i.chg_pct<0?'▼':'·';
+    return `<div class="mr-idx"><div class="mr-idx-n">${i.name}</div><div class="mr-idx-v">${i.price!=null?fmtN(i.price):'—'}</div><div class="mr-idx-c ${c}">${i.chg_pct!=null?(i.chg_pct>=0?'+':'')+i.chg_pct.toFixed(2)+'% '+a:'—'}</div></div>`;}).join("");
+  const ro=d.regime==='high';
+  const badge=`<span class="mr-regime ${ro?'down':'up'}">${ro?'RISK-OFF':'CONSTRUCTIVE'}</span>`;
+  const wl=(d.watchlist||[]).map(w=>`<span class="mr-chip" title="${(w.reasons||[]).join(', ').replace(/"/g,'')}">${w.symbol} <b>${w.score}/9</b></span>`).join("");
+  const rev=Object.entries(d.reversal_armed||{}).map(([k,v])=>{const t=v.trigger;
+    return `<div class="mr-rev"><span class="mr-rev-s">${k}</span><span class="mr-rev-r">RSI ${v.rsi!=null?v.rsi:'—'}</span><span class="mr-rev-t ${t?'up':'muted'}">${t?'● TRIGGER':'watching'}</span></div>`;}).join("");
+  $("marketRead").innerHTML=`
+    <div class="mr-indices">${idx||'<div class="empty">indices unavailable</div>'}</div>
+    <div class="mr-row">
+      <div class="mr-card mr-narr"><div class="mr-card-h"><span>The Read</span>${badge}</div><p>${d.narrative||'—'}</p></div>
+      <div class="mr-card"><div class="mr-card-h"><span>Armed Longs</span></div><div class="mr-chips">${wl||'<span style="color:var(--muted)">none cleared the bar</span>'}</div></div>
+    </div>
+    <div class="mr-card"><div class="mr-card-h"><span>Reversal Watch — TSM / AMD / ARM</span></div><div class="mr-revs">${rev||'<span style="color:var(--muted)">—</span>'}</div></div>`;
 }
 
 /* ---------- interactions ---------- */
@@ -1061,11 +1100,11 @@ function freshness(){
 setInterval(freshness,1000);
 
 initCharts();
-loadAll();loadStrip();loadMktStat();loadMag7();loadMovers();loadPortfolio();loadAccountHistory();loadTrades();freshness();
+loadAll();loadStrip();loadMktStat();loadMag7();loadMovers();loadPortfolio();loadMarketRead();freshness();
 // deep-link: #agents / #pnl open that view directly
 {const h=(location.hash||"").replace("#","");if(["agents","pnl","forensic","runners","backtest","gex","brief","paper"].includes(h))switchView(h);}
 window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(["research","agents","pnl","forensic","runners","backtest","gex","brief","paper"].includes(h))switchView(h);});
-setInterval(()=>{loadQuote();loadStrip();loadMktStat();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadAccountHistory();loadTrades();
+setInterval(()=>{loadQuote();loadStrip();loadMktStat();loadMag7();loadMovers();loadChart(false);loadPortfolio();loadMarketRead();
   if(document.getElementById("view-agents").classList.contains("active"))loadGexAgent();
   if(document.getElementById("view-paper").classList.contains("active"))loadPaper();},20000);
 </script>
