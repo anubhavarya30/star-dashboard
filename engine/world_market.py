@@ -31,6 +31,8 @@ def read():
                 h = yf.Ticker(t).history(period="2d")
                 c = float(h["Close"].iloc[-1]); p = float(h["Close"].iloc[-2])
                 pct = round((c / p - 1) * 100, 2)
+                if pct != pct or p <= 0:        # NaN / bad data guard
+                    rows.append({"name": name, "chg_pct": None}); continue
                 rows.append({"name": name, "chg_pct": pct})
                 if region == "US Futures":
                     fut[name] = pct
@@ -52,7 +54,7 @@ def narrative(r):
     asia = r["regions"].get("Asia", [])
     eu = r["regions"].get("Europe", [])
     def avg(rows):
-        v = [x["chg_pct"] for x in rows if x.get("chg_pct") is not None]
+        v = [x["chg_pct"] for x in rows if x.get("chg_pct") is not None and x["chg_pct"] == x["chg_pct"]]
         return round(sum(v) / len(v), 2) if v else None
     a, e = avg(asia), avg(eu)
     bits = [f"Overnight: global tape is <b>{r['global_bias']}</b>."]
