@@ -39,3 +39,11 @@ data/webull_session.json
 
 # Dashboard password (NEVER commit)
 data/dashboard_auth.json
+
+# Generated desk state (local only, never commit)
+data/reviews/
+data/premarket/
+data/options_state.json
+data/scalp_state.json
+data/fvg_state.json
+data/reversal_watch.json
