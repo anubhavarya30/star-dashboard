@@ -24,7 +24,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, ROOT)
 STATE = os.path.join(ROOT, "data", "scalp_state.json")
 
-LIVE = False            # SIM until a real-time data feed exists (delayed data can't scalp)
+LIVE = True             # IBKR PAPER (real fills); sim-fallback. NOTE: delayed data handicaps scalp timing until a real-time feed is added.
 MAX_OPEN = 4
 MAX_HOLD_MIN = 90       # scalps are quick — time-stop out
 TARGET_R = 1.2          # small target relative to risk
@@ -32,7 +32,6 @@ RSI_OVERSOLD = 35       # the flush must have pushed 5m RSI at/under this
 RSI_TURN = 42           # ...and it must be recovering back above this
 COOLDOWN = 1800         # per-name re-entry cooldown (s)
 NOTIONAL = 300.0        # $ per scalp (sizing)
-LIVE = True             # route through IBKR PAPER (real fills); sim-fallback if a fill fails
 
 _uni = {"t": 0, "syms": []}
 
