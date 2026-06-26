@@ -457,6 +457,11 @@ class Handler(BaseHTTPRequestHandler):
                                         "stats": db.paper_stats()})
             if u.path == "/api/star_pnl":
                 return self._send_json(db.star_pnl())
+            if u.path == "/api/fvg":
+                def _fvg():
+                    import fvg
+                    return fvg.signal(sym)
+                return self._send_json(cached("fvg:" + sym, _fvg, ttl=120))
             if u.path == "/api/scalp":
                 def _sc():
                     import scalp_desk
