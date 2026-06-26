@@ -81,6 +81,12 @@
   .mr-rev-r{color:var(--muted);font-size:12px}
   .mr-rev-t{font-size:11px;font-weight:600;letter-spacing:.5px}
   .mr-rev-t.muted{color:var(--muted)}
+  .mr-world{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .mr-wregion{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .mr-wreg-n{color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;min-width:78px}
+  .mr-w{font-size:12px;font-weight:600}
+  .mr-lessons{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  .mr-lessons li{font-size:12.5px;color:var(--txt-2);line-height:1.5}
   @media(max-width:760px){.mr-indices{grid-template-columns:repeat(2,1fr)}.mr-row{grid-template-columns:1fr}}
   @media(prefers-reduced-motion:reduce){.mr-chip{transition:none}}
   .ph .accent::before{content:"";width:3px;height:11px;background:var(--amber);border-radius:2px;box-shadow:0 0 6px rgba(255,166,43,.6)}
@@ -734,11 +740,26 @@ async function loadMarketRead(){
   const wl=(d.watchlist||[]).map(w=>`<span class="mr-chip" title="${(w.reasons||[]).join(', ').replace(/"/g,'')}">${w.symbol} <b>${w.score}/9</b></span>`).join("");
   const rev=Object.entries(d.reversal_armed||{}).map(([k,v])=>{const t=v.trigger;
     return `<div class="mr-rev"><span class="mr-rev-s">${k}</span><span class="mr-rev-r">RSI ${v.rsi!=null?v.rsi:'—'}</span><span class="mr-rev-t ${t?'up':'muted'}">${t?'● TRIGGER':'watching'}</span></div>`;}).join("");
+  // overnight world
+  const W=d.world||{}, wn=d.world_narrative||"";
+  const worldRegions=Object.entries(W.regions||{}).map(([region,items])=>{
+    const cells=(items||[]).map(i=>`<span class="mr-w ${cls(i.chg_pct)}">${i.name} ${i.chg_pct!=null?(i.chg_pct>=0?'+':'')+i.chg_pct+'%':'—'}</span>`).join("");
+    return `<div class="mr-wregion"><span class="mr-wreg-n">${region}</span>${cells}</div>`;}).join("");
+  // self-improvement: lessons + strategy scoreboard
+  const R=d.review||{};
+  const lessons=(R.lessons||[]).map(l=>`<li>${l}</li>`).join("");
+  const sb=Object.entries(R.scoreboard||{}).map(([s,g])=>`<span class="mr-chip">${s} <b class="${cls(g.pnl)}">${g.pnl>=0?'+':''}$${fmtN(g.pnl)}</b> <span style="color:var(--muted)">${g.win_rate}%</span></span>`).join("");
+  const cum=R.cumulative!=null?`<span class="${cls(R.cumulative)}">${R.cumulative>=0?'+':''}$${fmtN(R.cumulative)}</span>`:"—";
   $("marketRead").innerHTML=`
     <div class="mr-indices">${idx||'<div class="empty">indices unavailable</div>'}</div>
+    ${wn?`<div class="mr-card mr-narr"><div class="mr-card-h"><span>Overnight — World Markets</span></div><p>${wn}</p><div class="mr-world">${worldRegions}</div></div>`:""}
     <div class="mr-row">
       <div class="mr-card mr-narr"><div class="mr-card-h"><span>The Read</span>${badge}</div><p>${d.narrative||'—'}</p></div>
       <div class="mr-card"><div class="mr-card-h"><span>Armed Longs</span></div><div class="mr-chips">${wl||'<span style="color:var(--muted)">none cleared the bar</span>'}</div></div>
+    </div>
+    <div class="mr-row">
+      <div class="mr-card"><div class="mr-card-h"><span>Self-Improvement — Lessons</span><span style="color:var(--muted)">cumulative ${cum}</span></div><ul class="mr-lessons">${lessons||'<li style="color:var(--muted)">no trades to review yet</li>'}</ul></div>
+      <div class="mr-card"><div class="mr-card-h"><span>Strategy Scoreboard</span></div><div class="mr-chips">${sb||'<span style="color:var(--muted)">—</span>'}</div></div>
     </div>
     <div class="mr-card"><div class="mr-card-h"><span>Reversal Watch — TSM / AMD / ARM</span></div><div class="mr-revs">${rev||'<span style="color:var(--muted)">—</span>'}</div></div>`;
 }

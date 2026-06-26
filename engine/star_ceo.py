@@ -79,13 +79,21 @@ def research(max_watch=6):
             "constructive — trade the strongest 9-vote longs (score>=5)")
 
     idx = _agent("indices", _indices, default=[])
+    world = _agent("world", lambda: __import__("world_market").read(), default={})
+    review = _agent("review", lambda: __import__("daily_review").review(), default={})
     rev_state = {k: {"price": v.get("price"), "rsi": v.get("rsi"),
                      "trigger": v.get("trigger"), "note": v.get("note")}
                  for k, v in reversal.items() if isinstance(v, dict)}
+    try:
+        world_narr = __import__("world_market").narrative(world) if world.get("regions") else ""
+    except Exception:
+        world_narr = ""
     out = {"date": datetime.now().strftime("%Y-%m-%d"),
            "generated_at": datetime.now().astimezone().isoformat(),
            "regime": risk_level, "bias": bias,
            "indices": idx,
+           "world": world, "world_narrative": world_narr,
+           "review": {k: review.get(k) for k in ("net", "cumulative", "by_source", "scoreboard", "lessons", "best", "worst")} if review else {},
            "narrative": _narrative(idx, risk_level, watch, rev_state),
            "gex_flip": (gex or {}).get("gamma_flip"), "gex_regime": (gex or {}).get("regime"),
            "watchlist": watch,

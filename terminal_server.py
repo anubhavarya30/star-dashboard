@@ -467,6 +467,16 @@ class Handler(BaseHTTPRequestHandler):
                     import scalp_desk
                     return scalp_desk.stats()
                 return self._send_json(cached("scalp", _sc, ttl=20))
+            if u.path == "/api/fvg_desk":
+                def _fd():
+                    import fvg_desk
+                    return fvg_desk.stats()
+                return self._send_json(cached("fvg_desk", _fd, ttl=20))
+            if u.path == "/api/review":
+                def _rv():
+                    import daily_review
+                    return daily_review.review()
+                return self._send_json(cached("review", _rv, ttl=120))
             if u.path == "/api/ceo":
                 def _ceo():
                     import glob, json as _j, os as _os
