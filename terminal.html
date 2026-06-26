@@ -89,6 +89,11 @@
   .mr-lessons li{font-size:12.5px;color:var(--txt-2);line-height:1.5}
   @media(max-width:760px){.mr-indices{grid-template-columns:repeat(2,1fr)}.mr-row{grid-template-columns:1fr}}
   @media(prefers-reduced-motion:reduce){.mr-chip{transition:none}}
+  .strat-row:hover{background:rgba(255,255,255,.03)}
+  .strat-caret{display:inline-block;width:12px;color:var(--amber)}
+  .sd-h{color:var(--amber);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:8px 0 4px;font-weight:600}
+  .sd-line{font-size:12.5px;color:var(--txt-2);padding:2px 0}
+  .sd-line b{color:var(--txt)}
   .ph .accent::before{content:"";width:3px;height:11px;background:var(--amber);border-radius:2px;box-shadow:0 0 6px rgba(255,166,43,.6)}
   .ph .meta{color:var(--faint);letter-spacing:1px;font-weight:400}
 
@@ -978,7 +983,7 @@ async function loadPaper(){
   const dayRows=days.length?days.slice().reverse().map(r=>{const n=parseFloat(r.net_pnl);return `<tr><td style="text-align:left">${r.date}</td><td>${r.trades}</td><td>${r.wins}W/${r.losses}L</td><td class="${cls(n)}">${n>=0?'+':''}${fmtN(n)}</td><td>$${fmtN(parseFloat(r.equity_end))}</td></tr>`;}).join(""):'<tr><td colspan="5" class="empty">No days logged yet</td></tr>';
   // DB-backed analysis by strategy (stock vs gold), persisted in SQLite
   const stats=at.stats||{};
-  const srcRows=Object.keys(stats).length?Object.entries(stats).map(([src,g])=>`<tr><td style="text-align:left;text-transform:uppercase">${src}</td><td>${g.trades}</td><td>${g.win_rate}%</td><td class="${cls(g.pnl)}">${g.pnl>=0?'+':''}$${fmtN(g.pnl)}</td><td class="${cls(g.r)}">${g.r>=0?'+':''}${g.r}R</td><td>${g.expectancy_r}R</td></tr>`).join(""):'<tr><td colspan="6" class="empty">No closed trades in the DB yet</td></tr>';
+  const srcRows=Object.keys(stats).length?Object.entries(stats).map(([src,g])=>`<tr class="strat-row" onclick="toggleStrat('${src}')" style="cursor:pointer" title="click to see ${src} trades + open positions"><td style="text-align:left;text-transform:uppercase"><span class="strat-caret" id="caret-${src}">▸</span> ${src}</td><td>${g.trades}</td><td>${g.win_rate}%</td><td class="${cls(g.pnl)}">${g.pnl>=0?'+':''}$${fmtN(g.pnl)}</td><td class="${cls(g.r)}">${g.r>=0?'+':''}${g.r}R</td><td>${g.expectancy_r}R</td></tr><tr class="strat-detail" id="strat-${src}" style="display:none"><td colspan="6" style="padding:0;background:rgba(255,255,255,.015)"><div id="strat-box-${src}" style="padding:10px 14px">click to load…</div></td></tr>`).join(""):'<tr><td colspan="6" class="empty">No closed trades in the DB yet</td></tr>';
   $("paperResult").innerHTML=`
     <div class="btmetrics">${cards}</div>
     <div class="bth">Analysis by strategy (SQLite — all closed trades)</div>
@@ -989,6 +994,23 @@ async function loadPaper(){
     <table class="bttbl"><thead><tr><th style="text-align:left">Entry</th><th>Exit</th><th>Held</th><th>Sym</th><th>Sh</th><th>In</th><th>Out</th><th>P&amp;L</th><th>%</th></tr></thead><tbody>${closedRows}</tbody></table>
     <div class="bth">Daily history (equity curve)</div>
     <table class="bttbl"><thead><tr><th style="text-align:left">Date</th><th>Trades</th><th>W/L</th><th>Net</th><th>Equity</th></tr></thead><tbody>${dayRows}</tbody></table>`;
+}
+
+/* ---------- strategy drill-down (click a strategy row) ---------- */
+async function toggleStrat(src){
+  const row=document.getElementById("strat-"+src), box=document.getElementById("strat-box-"+src), caret=document.getElementById("caret-"+src);
+  if(!row)return;
+  if(row.style.display!=="none"){row.style.display="none";if(caret)caret.textContent="▸";return;}
+  row.style.display="";if(caret)caret.textContent="▾";
+  box.innerHTML='<div class="empty">loading…</div>';
+  let d;try{d=await api(`/api/strategy_detail?source=${src}`);}catch(e){box.innerHTML='<div class="errline">failed to load</div>';return;}
+  const fmtDur=m=>{if(m==null||isNaN(m))return'—';m=Math.round(m);return m<60?m+'m':Math.floor(m/60)+'h'+(m%60)+'m';};
+  const durM=(a,b)=>{try{return (new Date(b)-new Date(a))/60000;}catch(e){return null;}};
+  const hhmm=iso=>{try{return new Date(iso).toLocaleTimeString("en-US",{hour12:false}).slice(0,5);}catch(e){return'—';}};
+  const open=d.open||[], closed=d.closed||[];
+  const openHtml=open.length?`<div class="sd-h">Open now (${open.length})</div>`+open.map(p=>{const sh=p.shares||p.contracts||'';const px=p.entry||p.net_debit||p.avg_cost;return `<div class="sd-line"><b>${p.symbol}</b> · ${sh}${p.contracts?'x':'sh'} @ $${fmtN(px)} <span style="color:var(--muted)">· ${hhmm(p.opened_at)}</span></div>`;}).join(""):`<div class="sd-h">Open now (0)</div>`;
+  const closedHtml=`<div class="sd-h">Closed (${closed.length})</div>`+(closed.length?`<table class="bttbl" style="margin-top:4px"><thead><tr><th style="text-align:left">Sym</th><th>In</th><th>Out</th><th>P&amp;L</th><th>Entry</th><th>Held</th></tr></thead><tbody>`+closed.slice(0,40).map(r=>{const p=parseFloat(r.pnl);const dm=r.duration_min!=null?parseFloat(r.duration_min):durM(r.opened_at,r.closed_at);return `<tr><td style="text-align:left" class="sym">${r.symbol}</td><td>${fmtN(r.entry)}</td><td>${fmtN(r.exit)}</td><td class="${cls(p)}">${p>=0?'+':''}$${fmtN(p)}</td><td style="color:var(--muted);font-size:11px">${hhmm(r.opened_at)}</td><td style="color:var(--muted);font-size:11px">${fmtDur(dm)}</td></tr>`;}).join("")+`</tbody></table>`:'<div style="color:var(--muted);padding:4px">none yet</div>');
+  box.innerHTML=openHtml+closedHtml;
 }
 
 /* ---------- Forensic scanner ---------- */

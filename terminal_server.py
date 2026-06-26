@@ -457,6 +457,24 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/all_trades":
                 return self._send_json({"trades": db.paper_trades_all(int(q.get("limit",["500"])[0])),
                                         "stats": db.paper_stats()})
+            if u.path == "/api/strategy_detail":
+                src = (q.get("source", ["scalp"])[0] or "scalp").lower()
+                def _sd():
+                    closed = [r for r in db.paper_trades_all(800) if (r.get("source") or "stock") == src][:60]
+                    opens = []
+                    try:
+                        if src == "scalp":
+                            import scalp_desk; opens = scalp_desk.stats().get("open", [])
+                        elif src == "fvg":
+                            import fvg_desk; opens = fvg_desk.stats().get("open", [])
+                        elif src == "option":
+                            import options_desk; opens = options_desk.stats().get("open", [])
+                        elif src == "stock":
+                            import risk_manager as rm; opens = rm.status().get("open_positions", [])
+                    except Exception:
+                        pass
+                    return {"source": src, "closed": closed, "open": opens}
+                return self._send_json(_sd())
             if u.path == "/api/star_pnl":
                 return self._send_json(db.star_pnl())
             if u.path == "/api/fvg":
