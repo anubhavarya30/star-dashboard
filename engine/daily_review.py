@@ -59,8 +59,16 @@ def _lessons(by_today, sb):
 
 def review(date=None):
     import db
+    all_rows = db.paper_trades_all(2000)
     today = date or datetime.date.today().isoformat()
-    rows = [r for r in db.paper_trades_all(2000) if str(r.get("closed_at", ""))[:10] == today]
+    rows = [r for r in all_rows if str(r.get("closed_at", ""))[:10] == today]
+    # Morning case: the new day has no trades yet -> review the LAST completed session
+    # so the pre-market brief actually shows results, not a blank.
+    if not rows and date is None:
+        dates = sorted({str(r.get("closed_at", ""))[:10] for r in all_rows if r.get("closed_at")}, reverse=True)
+        if dates:
+            today = dates[0]
+            rows = [r for r in all_rows if str(r.get("closed_at", ""))[:10] == today]
     by = {}
     for r in rows:
         s = r.get("source") or "stock"
