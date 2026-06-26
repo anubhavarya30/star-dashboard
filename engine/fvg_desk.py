@@ -18,8 +18,17 @@ sys.path.insert(0, ROOT)
 STATE = os.path.join(ROOT, "data", "fvg_state.json")
 
 MAX_OPEN = 3
-NOTIONAL = 1000.0      # $ per sim FVG swing (sizing for P&L tracking)
+NOTIONAL = 1000.0      # $ per FVG swing (sizing)
 COOLDOWN = 86400       # one entry per name per day
+LIVE = True            # route through IBKR PAPER (real fills); sim-fallback if a fill fails
+
+
+def _broker_ok():
+    try:
+        import paper_session as ps
+        return bool(ps._broker().get("can_auto_trade"))
+    except Exception:
+        return False
 
 
 def _load():
@@ -49,6 +58,7 @@ def maybe_enter():
         return
     open_syms = {p["symbol"] for p in s["open"]}
     now = time.time()
+    can_trade = LIVE and _broker_ok()
     for sym in ss.UNIVERSE:
         if len(s["open"]) >= MAX_OPEN:
             break
@@ -61,12 +71,20 @@ def maybe_enter():
         if not sig.get("setup"):
             continue
         shares = max(1, int(NOTIONAL / sig["entry"]))
-        pos = {"symbol": sym, "entry": sig["entry"], "stop": sig["stop"],
-               "target": sig["target"], "shares": shares,
-               "note": sig.get("note", "FVG support long"),
+        entry, via = sig["entry"], "sim"
+        if can_trade:
+            try:
+                import ibkr_broker as b
+                r = b.place_order(sym, shares, "BUY")
+                if r.get("filled") and r.get("avg_fill"):
+                    entry, via = round(float(r["avg_fill"]), 2), "ibkr"
+            except Exception:
+                pass
+        pos = {"symbol": sym, "entry": entry, "stop": sig["stop"], "target": sig["target"],
+               "shares": shares, "via": via, "note": sig.get("note", "FVG support long"),
                "opened_at": datetime.now().isoformat()}
         s["open"].append(pos); s["last_alert"][sym] = now; open_syms.add(sym); _save(s)
-        _log(f"FVG ENTRY[sim] {sym} {shares}sh @ ${sig['entry']} stop ${sig['stop']} target ${sig['target']}")
+        _log(f"FVG ENTRY[{via}] {sym} {shares}sh @ ${entry} stop ${sig['stop']} target ${sig['target']}")
 
 
 def manage():
@@ -84,12 +102,21 @@ def manage():
             reason = "stop"
         if not reason:
             continue
-        pnl = round((px - p["entry"]) * p["shares"], 2)
+        exit_px, via = px, p.get("via", "sim")
+        if LIVE and p.get("via") == "ibkr":
+            try:
+                import ibkr_broker as b
+                r = b.place_order(p["symbol"], p["shares"], "SELL")
+                if r.get("filled") and r.get("avg_fill"):
+                    exit_px = round(float(r["avg_fill"]), 2)
+            except Exception:
+                pass
+        pnl = round((exit_px - p["entry"]) * p["shares"], 2)
         s["realized"] = round(s["realized"] + pnl, 2); s["trades"] += 1
         s["wins"] += 1 if pnl > 0 else 0
         s["open"].remove(p); _save(s)
-        _rec_db({**p, "exit": px, "pnl": pnl, "closed_at": datetime.now().isoformat()})
-        _log(f"FVG EXIT[sim] {p['symbol']} @ ${px} ({reason}) {'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
+        _rec_db({**p, "exit": exit_px, "pnl": pnl, "closed_at": datetime.now().isoformat()})
+        _log(f"FVG EXIT[{via}] {p['symbol']} @ ${exit_px} ({reason}) {'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
 
 
 def _rec_db(p):

@@ -31,9 +31,18 @@ TARGET_R = 1.2          # small target relative to risk
 RSI_OVERSOLD = 35       # the flush must have pushed 5m RSI at/under this
 RSI_TURN = 42           # ...and it must be recovering back above this
 COOLDOWN = 1800         # per-name re-entry cooldown (s)
-NOTIONAL = 300.0        # $ per sim scalp (sizing for P&L tracking)
+NOTIONAL = 300.0        # $ per scalp (sizing)
+LIVE = True             # route through IBKR PAPER (real fills); sim-fallback if a fill fails
 
 _uni = {"t": 0, "syms": []}
+
+
+def _broker_ok():
+    try:
+        import paper_session as ps
+        return bool(ps._broker().get("can_auto_trade"))
+    except Exception:
+        return False
 
 
 def _universe():
@@ -142,6 +151,7 @@ def maybe_enter():
         return
     open_syms = {p["symbol"] for p in s["open"]}
     now = time.time()
+    can_trade = LIVE and _broker_ok()
     for sig in scan():
         if len(s["open"]) >= MAX_OPEN:
             break
@@ -149,12 +159,23 @@ def maybe_enter():
         if sym in open_syms or now - s["last_alert"].get(sym, 0) < COOLDOWN:
             continue
         shares = max(1, int(NOTIONAL / sig["price"]))
-        pos = {"symbol": sym, "entry": sig["price"], "stop": sig["stop"],
-               "target": sig["target"], "shares": shares, "note": sig["note"],
+        entry, via = sig["price"], "sim"
+        if can_trade:
+            try:
+                import ibkr_broker as b
+                r = b.place_order(sym, shares, "BUY")
+                if r.get("filled") and r.get("avg_fill"):
+                    entry, via = round(float(r["avg_fill"]), 2), "ibkr"
+                else:
+                    _log(f"scalp {sym} IBKR not filled ({r.get('status') or r.get('error')}) — sim")
+            except Exception as e:
+                _log(f"scalp {sym} IBKR error {e} — sim")
+        pos = {"symbol": sym, "entry": entry, "stop": sig["stop"], "target": sig["target"],
+               "shares": shares, "via": via, "note": sig["note"],
                "opened_at": datetime.now().isoformat()}
         s["open"].append(pos); s["last_alert"][sym] = now; open_syms.add(sym)
         _save(s)
-        _log(f"SCALP ENTRY[sim] {sym} {shares}sh @ ${sig['price']} stop ${sig['stop']} target ${sig['target']} · {sig['note']}")
+        _log(f"SCALP ENTRY[{via}] {sym} {shares}sh @ ${entry} stop ${sig['stop']} target ${sig['target']} · {sig['note']}")
 
 
 def manage(force_close=False):
@@ -177,12 +198,21 @@ def manage(force_close=False):
             reason = "EOD flat"
         if not reason:
             continue
-        pnl = round((px - p["entry"]) * p["shares"], 2)
+        exit_px, via = px, p.get("via", "sim")
+        if LIVE and p.get("via") == "ibkr":
+            try:
+                import ibkr_broker as b
+                r = b.place_order(p["symbol"], p["shares"], "SELL")
+                if r.get("filled") and r.get("avg_fill"):
+                    exit_px = round(float(r["avg_fill"]), 2)
+            except Exception:
+                pass
+        pnl = round((exit_px - p["entry"]) * p["shares"], 2)
         s["realized"] = round(s["realized"] + pnl, 2); s["trades"] += 1
         s["wins"] += 1 if pnl > 0 else 0
         s["open"].remove(p); _save(s)
-        _rec_db({**p, "exit": px, "pnl": pnl, "closed_at": datetime.now().isoformat()})
-        _log(f"SCALP EXIT[sim] {p['symbol']} @ ${px} ({reason}) {'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
+        _rec_db({**p, "exit": exit_px, "pnl": pnl, "closed_at": datetime.now().isoformat()})
+        _log(f"SCALP EXIT[{via}] {p['symbol']} @ ${exit_px} ({reason}) {'+' if pnl>=0 else ''}${pnl} | realized ${s['realized']}")
 
 
 def _rec_db(p):
