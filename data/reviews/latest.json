@@ -1,0 +1,41 @@
+{
+  "date": "2026-06-25",
+  "trades": 3,
+  "net": -16.04,
+  "cumulative": 64.87,
+  "by_source": {
+    "stock": {
+      "trades": 3,
+      "wins": 0,
+      "pnl": -16.04
+    }
+  },
+  "scoreboard": {
+    "stock": {
+      "trades": 14,
+      "wins": 9,
+      "pnl": 64.87,
+      "win_rate": 64.3,
+      "avg_pnl": 4.63
+    },
+    "gold": {
+      "trades": 2,
+      "wins": 0,
+      "pnl": 0.0,
+      "win_rate": 0.0,
+      "avg_pnl": 0.0
+    }
+  },
+  "best": {
+    "symbol": "V",
+    "pnl": 0.0
+  },
+  "worst": {
+    "symbol": "TSM",
+    "pnl": -14.34
+  },
+  "lessons": [
+    "\u274c stock lost $16.04 today (3 trades) \u2014 tighten entries / cut faster.",
+    "\ud83d\udcc8 Best proven edge: stock (+$4.63/trade over 14). Scale this one."
+  ]
+}
