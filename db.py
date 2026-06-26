@@ -269,77 +269,23 @@ def position_history(symbol: str, limit_days: int = 30):
 
 
 def pnl_calendar(days: int = 35):
-    """Daily P&L for the calendar. Realized P&L per day from the executions
-    ledger, PLUS today's live unrealized P&L from open positions
-    (live_account.json) — so an open AMZN at -$17 shows as today's -$17, and
-    multiple open positions are summed."""
-    import json
-    with _conn() as c:
-        rows = c.execute(
-            "SELECT date(ts) d, COALESCE(SUM(realized_pnl),0) r, COUNT(*) n"
-            " FROM executions WHERE ts >= date('now', ?) GROUP BY date(ts)",
-            (f"-{int(days)} days",),
-        ).fetchall()
-    by = {r["d"]: {"date": r["d"], "realized": round(r["r"], 2),
-                   "unrealized": 0.0, "trades": r["n"]} for r in rows}
-
-    today = datetime.now().astimezone().date().isoformat()
-
-    # historical per-day unrealized mark: sum the LAST snapshot of each day
-    with _conn() as c:
-        snaps = c.execute(
-            "SELECT d, SUM(unrealized_pnl) u FROM ("
-            "  SELECT date(ts) d, ts, unrealized_pnl,"
-            "         RANK() OVER (PARTITION BY date(ts) ORDER BY ts DESC) rk"
-            "  FROM position_snapshots WHERE ts >= date('now', ?)"
-            ") WHERE rk = 1 GROUP BY d",
-            (f"-{int(days)} days",),
-        ).fetchall()
-    for s in snaps:
-        if s["d"] == today:
-            continue  # today uses the live value below, not a stale snapshot
-        e = by.get(s["d"], {"date": s["d"], "realized": 0.0, "unrealized": 0.0, "trades": 0})
-        e["unrealized"] = round(s["u"] or 0.0, 2)
-        by[s["d"]] = e
-
-    # today's LIVE unrealized from open positions (fresher than any snapshot)
-    unreal = 0.0
-    connected = False
-    lf = DB_PATH.parent / "live_account.json"
-    if lf.exists():
-        try:
-            d = json.loads(lf.read_text())
-            if d.get("status") == "connected":
-                connected = True
-                unreal = sum((p.get("unrealized_pnl") or 0) for p in d.get("positions", []))
-        except Exception:
-            pass
-    if connected and (unreal or today in by):
-        e = by.get(today, {"date": today, "realized": 0.0, "unrealized": 0.0, "trades": 0})
-        e["unrealized"] = round(unreal, 2)
-        by[today] = e
-
-    # fold in the autonomous PAPER desk's daily results (data/paper_results.csv).
-    # The desk's trades aren't in db.executions (no live IBKR sync when they filled),
-    # so the calendar would otherwise show $0 even though the desk made +$74. This
-    # makes the P&L Calendar match the Paper Trading tab.
-    import csv as _csv
-    pr = DB_PATH.parent / "data" / "paper_results.csv"
-    if pr.exists():
-        try:
-            for row in _csv.DictReader(pr.open()):
-                dt = row.get("date")
-                if not dt:
-                    continue
-                e = by.get(dt, {"date": dt, "realized": 0.0, "unrealized": 0.0, "trades": 0})
-                e["realized"] = round(e["realized"] + float(row.get("net_pnl") or 0), 2)
-                e["trades"] = e["trades"] + int(row.get("trades") or 0)
-                by[dt] = e
-        except Exception:
-            pass
-
+    """Daily realized P&L for the calendar — derived from the SAME paper_trades
+    ledger as STAR P&L (star_pnl) and the strategy table, so EVERY P&L view in the
+    dashboard reconciles to ONE number. (Previously triple-sourced from executions +
+    paper_results.csv + snapshots, which double-counted and diverged from the desk
+    ledger — that's what made the calendar and the Paper page disagree.)"""
+    from datetime import timedelta
+    cutoff = (datetime.now().astimezone().date() - timedelta(days=int(days))).isoformat()
+    by = {}
+    for r in paper_trades_all(8000):
+        d = str(r.get("closed_at", ""))[:10]
+        if not d or d < cutoff:
+            continue
+        e = by.setdefault(d, {"date": d, "realized": 0.0, "unrealized": 0.0, "trades": 0, "total": 0.0})
+        e["realized"] = round(e["realized"] + (r.get("pnl") or 0), 2)
+        e["trades"] += 1
     for e in by.values():
-        e["total"] = round(e["realized"] + e["unrealized"], 2)
+        e["total"] = e["realized"]
     return sorted(by.values(), key=lambda x: x["date"])
 
 
