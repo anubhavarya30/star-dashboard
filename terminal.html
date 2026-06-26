@@ -689,9 +689,17 @@ async function loadMktStat(){
   let d;try{d=await api(`/api/calendar`);}catch(e){return;}
   const el=$("mktStat");if(!el)return;
   let cls,txt;
-  if(!d.trading_day){cls="closed";txt=d.holiday?("● CLOSED · "+d.holiday):"● CLOSED · "+d.weekday;}
-  else if(d.pre_holiday){cls="pre";txt="▲ PRE-HOLIDAY · "+d.gap_days+"d gap to "+new Date(d.next_trading_day).toLocaleDateString("en-US",{weekday:"short"});}
-  else{cls="open";txt="● MARKET OPEN";}
+  if(!d.trading_day){
+    cls="closed";txt=d.holiday?("● CLOSED · "+d.holiday):"● CLOSED · "+d.weekday;
+  }else{
+    // session is time-based (market hours 9:30–16:00 ET), not just the calendar day
+    const et=new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
+    const mins=et.getHours()*60+et.getMinutes(), OPEN=9*60+30, CLOSE=16*60;
+    const ph=d.pre_holiday?" · pre-holiday":"";
+    if(mins<OPEN){cls="pre";txt="◔ PRE-MARKET"+ph;}
+    else if(mins>=CLOSE){cls="closed";txt="● CLOSED · after hours"+ph;}
+    else{cls=d.pre_holiday?"pre":"open";txt=d.pre_holiday?("▲ OPEN · pre-holiday ("+d.gap_days+"d gap)"):"● MARKET OPEN";}
+  }
   el.className="mktstat "+cls;el.textContent=txt;el.title=d.note||"";
 }
 async function loadStrip(){
