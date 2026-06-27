@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#05070d; --panel:#0a0e16; --panel-2:#0e131d; --raised:#121826;
@@ -402,6 +403,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-6 3 4 4-7"/></svg>
     <span class="lbl">Paper Trading</span><span class="hint">P&amp;L history</span>
   </div>
+  <div class="navitem" data-view="analytics" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg>
+    <span class="lbl">Analytics</span><span class="hint">charts</span>
+  </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
 
@@ -609,6 +614,24 @@
   </div>
 </div>
 
+<!-- ===== ANALYTICS VIEW (colorful charts) ===== -->
+<div id="view-analytics" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">Analytics</span><span class="meta" id="anaTime"></span></div>
+      <div class="btmetrics" id="anaCards"></div>
+      <div class="bth" style="margin-top:14px">Equity curve (cumulative P&amp;L)</div>
+      <div style="position:relative;height:240px"><canvas id="anaEquity"></canvas></div>
+      <div class="bth" style="margin-top:18px">Daily P&amp;L</div>
+      <div style="position:relative;height:220px"><canvas id="anaDaily"></canvas></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px">
+        <div><div class="bth">P&amp;L by strategy</div><div style="position:relative;height:240px"><canvas id="anaStrat"></canvas></div></div>
+        <div><div class="bth">Win rate by strategy (%)</div><div style="position:relative;height:240px"><canvas id="anaWin"></canvas></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
 <footer class="foot">
   <b>Charts:</b> TradingView Lightweight Charts &nbsp;·&nbsp; <b>Quotes/Fundamentals:</b> yfinance (~15-min delayed) &nbsp;·&nbsp; <b>Movers:</b> Webull public data &nbsp;·&nbsp; <b>Portfolio:</b> live IBKR TWS &nbsp;·&nbsp; research terminal — not order routing.
 </footer>
@@ -801,6 +824,35 @@ function switchView(name){
   if(name==="gex" && !gexDone){runGexSym("SPY");gexDone=true;}
   if(name==="brief"){loadBrief(false);}
   if(name==="paper"){loadPaper();}
+  if(name==="analytics"){loadAnalytics();}
+}
+
+/* ---------- Analytics (colorful Chart.js charts) ---------- */
+let ANA={};
+async function loadAnalytics(){
+  if(typeof Chart==="undefined"){$("anaCards").innerHTML='<div class="errline">Chart library still loading — try again in a moment.</div>';return;}
+  let cal,at,sp;
+  try{cal=await api(`/api/pnl_calendar`);at=await api(`/api/all_trades`);sp=await api(`/api/star_pnl`);}
+  catch(e){$("anaCards").innerHTML='<div class="errline">Analytics data unavailable.</div>';return;}
+  $("anaTime").textContent="updated "+new Date().toLocaleTimeString("en-US",{hour12:false});
+  const days=(cal.days||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
+  const labels=days.map(d=>d.date.slice(5));
+  const daily=days.map(d=>+(d.total||0));
+  let run=0;const cum=daily.map(v=>{run=Math.round((run+v)*100)/100;return run;});
+  const stats=at.stats||{};
+  const snames=Object.keys(stats).sort((a,b)=>(stats[b].pnl||0)-(stats[a].pnl||0));
+  const spnl=snames.map(s=>stats[s].pnl||0), swin=snames.map(s=>stats[s].win_rate||0);
+  const GREEN="#2ee6a6",RED="#ff5d6c",AMBER="#f0b132",GRID="rgba(255,255,255,.06)",TXT="#aeb9c7";
+  const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:GRID},ticks:{color:TXT,maxRotation:0,autoSkip:true}},y:{grid:{color:GRID},ticks:{color:TXT}}}};
+  // cards
+  $("anaCards").innerHTML=[["All-time","$"+fmtN(sp.all_pnl),cls(sp.all_pnl)],["Today","$"+fmtN(sp.today_pnl),cls(sp.today_pnl)],
+    ["Win rate",(sp.all_win_rate||0)+"%",""],["Trades",sp.all_trades+"",""]].map(([k,v,c])=>`<div class="btm"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
+  const mk=(id,cfg)=>{if(ANA[id])ANA[id].destroy();const el=$(id);if(el)ANA[id]=new Chart(el.getContext("2d"),cfg);};
+  mk("anaEquity",{type:"line",data:{labels,datasets:[{data:cum,borderColor:AMBER,backgroundColor:"rgba(240,177,50,.12)",fill:true,tension:.3,pointRadius:0}]},options:baseOpts});
+  mk("anaDaily",{type:"bar",data:{labels,datasets:[{data:daily,backgroundColor:daily.map(v=>v>=0?GREEN:RED)}]},options:baseOpts});
+  mk("anaStrat",{type:"bar",data:{labels:snames,datasets:[{data:spnl,backgroundColor:spnl.map(v=>v>=0?GREEN:RED)}]},options:baseOpts});
+  mk("anaWin",{type:"bar",data:{labels:snames,datasets:[{data:swin,backgroundColor:AMBER}]},options:baseOpts});
 }
 
 /* ---------- Runner Scanner ---------- */
