@@ -33,7 +33,7 @@ TARGET_R = 2.0          # let winners run (was 1.2)
 RSI_OVERSOLD = 30       # demand a real flush (was 35)
 RSI_TURN = 45           # confirm a stronger turn-up (was 42)
 COOLDOWN = 1800         # per-name re-entry cooldown (s)
-NOTIONAL = 300.0        # $ per scalp (sizing)
+NOTIONAL = 500.0        # $ per scalp — scalp is the primary engine now (user-set 2026-06-27)
 
 _uni = {"t": 0, "syms": []}
 

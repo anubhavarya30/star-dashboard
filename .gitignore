@@ -47,3 +47,6 @@ data/options_state.json
 data/scalp_state.json
 data/fvg_state.json
 data/reversal_watch.json
+
+# Obsidian vault (generated, synced separately)
+obsidian_vault/
