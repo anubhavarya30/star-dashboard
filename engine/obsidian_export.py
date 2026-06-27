@@ -78,6 +78,36 @@ def export(vault=None):
                          f"{t.get('entry')} | {t.get('exit')} | {_money(t.get('pnl'))} |")
         open(os.path.join(vault, "Daily", f"{d}.md"), "w").write("\n".join(lines))
 
+    # ---- Visual Dashboard (Obsidian Charts plugin: ```chart blocks) ----
+    dates = sorted(by_date.keys())
+    daily_pnl = [round(sum((t.get("pnl") or 0) for t in by_date[d]), 2) for d in dates]
+    cum, run = [], 0.0
+    for v in daily_pnl:
+        run = round(run + v, 2); cum.append(run)
+    src_names = [s for s, _ in sorted(stats.items(), key=lambda kv: kv[1].get("pnl", 0), reverse=True)]
+    src_pnl = [stats[s].get("pnl", 0) for s in src_names]
+    src_wr = [stats[s].get("win_rate", 0) for s in src_names]
+    daily_colors = ["#2ee6a6" if v >= 0 else "#ff5d6c" for v in daily_pnl]
+    src_colors = ["#2ee6a6" if v >= 0 else "#ff5d6c" for v in src_pnl]
+
+    def chart(spec):
+        return "```chart\n" + spec.strip() + "\n```\n"
+
+    dash = ["---", f"updated: {datetime.now().isoformat()}", "tags: [dashboard]", "---",
+            "# 📊 STAR — Visual Dashboard  #dashboard", "",
+            f"**All-time:** {_money(sp['all_pnl'])} · **Today:** {_money(sp['today_pnl'])} · "
+            f"**Win rate:** {sp.get('all_win_rate',0)}% · **Trades:** {sp['all_trades']}", "",
+            "> [!info] Needs the **Obsidian Charts** community plugin to render these as graphs.", "",
+            "## Equity curve (cumulative P&L)", "",
+            chart(f"type: line\nlabels: {dates}\nseries:\n  - title: Cumulative $\n    data: {cum}\ntension: 0.3\nfill: true\nwidth: 80%\nbeginAtZero: true"),
+            "## Daily P&L", "",
+            chart(f"type: bar\nlabels: {dates}\nseries:\n  - title: Daily P&L\n    data: {daily_pnl}\ncolors: {daily_colors}\nwidth: 80%\nbeginAtZero: true"),
+            "## P&L by strategy", "",
+            chart(f"type: bar\nlabels: {src_names}\nseries:\n  - title: P&L $\n    data: {src_pnl}\ncolors: {src_colors}\nwidth: 70%\nbeginAtZero: true"),
+            "## Win rate by strategy (%)", "",
+            chart(f"type: bar\nlabels: {src_names}\nseries:\n  - title: Win %\n    data: {src_wr}\nwidth: 70%\nbeginAtZero: true")]
+    open(os.path.join(vault, "Dashboard.md"), "w").write("\n".join(dash))
+
     # ---- Home dashboard ----
     strat_rows = "\n".join(
         f"| [[Strategies/{s}|{s}]] | {g.get('trades',0)} | {g.get('win_rate',0)}% | {_money(g.get('pnl'))} |"
@@ -87,6 +117,7 @@ def export(vault=None):
     home = ["---", f"updated: {datetime.now().isoformat()}", f"all_time_pnl: {sp['all_pnl']}",
             f"today_pnl: {sp['today_pnl']}", "---",
             "# ⭐ STAR — Trading Vault", "",
+            "👉 **[[Dashboard]]** — colorful charts (equity curve, daily P&L, strategy breakdown)", "",
             f"**All-time P&L:** {_money(sp['all_pnl'])} · **Today:** {_money(sp['today_pnl'])} · "
             f"**Win rate:** {sp.get('all_win_rate',0)}% · **Trades:** {sp['all_trades']}", "",
             "## Strategies", "", "| Strategy | Trades | Win% | P&L |", "|---|---|---|---|", strat_rows, "",
