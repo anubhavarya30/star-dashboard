@@ -95,6 +95,19 @@
   .sd-h{color:var(--amber);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:8px 0 4px;font-weight:600}
   .sd-line{font-size:12.5px;color:var(--txt-2);padding:2px 0}
   .sd-line b{color:var(--txt)}
+  /* ===== Live Analytics ===== */
+  .livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 9px var(--up);animation:lpulse 1.6s infinite;margin:0 5px 0 9px;vertical-align:middle}
+  .livetxt{font-size:9px;color:var(--up);letter-spacing:2px;text-shadow:0 0 8px rgba(46,230,166,.5)}
+  @keyframes lpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .anastream{height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px)}
+  .anastream .scan{position:absolute;top:0;left:-45%;width:45%;height:100%;background:linear-gradient(90deg,transparent,rgba(240,177,50,.14),transparent);animation:scan 1.05s linear infinite}
+  @keyframes scan{to{left:115%}}
+  .streamtxt{font-size:12px;letter-spacing:4px;color:var(--amber);font-weight:600;text-shadow:0 0 12px rgba(240,177,50,.5);animation:blink 1.1s steps(2,end) infinite}
+  @keyframes blink{50%{opacity:.35}}
+  .anabody{transition:opacity .55s ease}
+  .anachart{position:relative;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.012);padding:10px 12px;box-shadow:inset 0 0 30px rgba(0,0,0,.25)}
+  .btm .v{font-variant-numeric:tabular-nums}
+  @media(prefers-reduced-motion:reduce){.livedot,.streamtxt,.anastream .scan{animation:none}}
   .ph .accent::before{content:"";width:3px;height:11px;background:var(--amber);border-radius:2px;box-shadow:0 0 6px rgba(255,166,43,.6)}
   .ph .meta{color:var(--faint);letter-spacing:1px;font-weight:400}
 
@@ -618,15 +631,18 @@
 <div id="view-analytics" class="view">
   <div class="view-pad">
     <section class="panel">
-      <div class="ph"><span class="accent">Analytics</span><span class="meta" id="anaTime"></span></div>
-      <div class="btmetrics" id="anaCards"></div>
-      <div class="bth" style="margin-top:14px">Equity curve (cumulative P&amp;L)</div>
-      <div style="position:relative;height:240px"><canvas id="anaEquity"></canvas></div>
-      <div class="bth" style="margin-top:18px">Daily P&amp;L</div>
-      <div style="position:relative;height:220px"><canvas id="anaDaily"></canvas></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px">
-        <div><div class="bth">P&amp;L by strategy</div><div style="position:relative;height:240px"><canvas id="anaStrat"></canvas></div></div>
-        <div><div class="bth">Win rate by strategy (%)</div><div style="position:relative;height:240px"><canvas id="anaWin"></canvas></div></div>
+      <div class="ph"><span class="accent">Analytics <span class="livedot"></span><span class="livetxt">LIVE</span></span><span class="meta" id="anaTime"></span></div>
+      <div id="anaStream" class="anastream"><div class="scan"></div><div class="streamtxt" id="anaStreamTxt">▚▚ STREAMING TRADE LEDGER</div></div>
+      <div id="anaBody" class="anabody">
+        <div class="btmetrics" id="anaCards"></div>
+        <div class="bth" style="margin-top:16px">Equity curve · cumulative P&amp;L</div>
+        <div class="anachart" style="height:240px"><canvas id="anaEquity"></canvas></div>
+        <div class="bth" style="margin-top:18px">Daily P&amp;L</div>
+        <div class="anachart" style="height:200px"><canvas id="anaDaily"></canvas></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px">
+          <div><div class="bth">P&amp;L by strategy</div><div class="anachart" style="height:230px"><canvas id="anaStrat"></canvas></div></div>
+          <div><div class="bth">Win rate %</div><div class="anachart" style="height:230px"><canvas id="anaWin"></canvas></div></div>
+        </div>
       </div>
     </section>
   </div>
@@ -827,32 +843,59 @@ function switchView(name){
   if(name==="analytics"){loadAnalytics();}
 }
 
-/* ---------- Analytics (colorful Chart.js charts) ---------- */
-let ANA={};
+/* ---------- Analytics (LIVE Chart.js — streaming feel, glowing thin charts) ---------- */
+let ANA={}, anaRun=0;
+const GLOW={id:"glow",beforeDatasetsDraw(c){const x=c.ctx;x.save();x.shadowBlur=14;x.shadowColor=c.$glow||"rgba(240,177,50,.55)";},afterDatasetsDraw(c){c.ctx.restore();}};
+function countUp(el,to,fmt){
+  if(!el)return;const start=performance.now(),dur=850,from=0;
+  function step(t){const p=Math.min(1,(t-start)/dur),e=1-Math.pow(1-p,3);el.textContent=fmt(from+(to-from)*e);if(p<1)requestAnimationFrame(step);}
+  requestAnimationFrame(step);
+}
 async function loadAnalytics(){
-  if(typeof Chart==="undefined"){$("anaCards").innerHTML='<div class="errline">Chart library still loading — try again in a moment.</div>';return;}
+  const stream=$("anaStream"),body=$("anaBody");
+  if(typeof Chart==="undefined"){if(stream)stream.innerHTML='<div class="errline">Chart engine loading… reopen in a moment.</div>';return;}
+  const run=++anaRun;
+  if(stream){stream.style.display="flex";} if(body){body.style.opacity="0";}
   let cal,at,sp;
   try{cal=await api(`/api/pnl_calendar`);at=await api(`/api/all_trades`);sp=await api(`/api/star_pnl`);}
-  catch(e){$("anaCards").innerHTML='<div class="errline">Analytics data unavailable.</div>';return;}
-  $("anaTime").textContent="updated "+new Date().toLocaleTimeString("en-US",{hour12:false});
+  catch(e){if(stream)stream.innerHTML='<div class="errline">Analytics feed unavailable.</div>';return;}
+  if(run!==anaRun)return;
+  await new Promise(r=>setTimeout(r,900));               // brief streaming dwell = the "live" feel
+  if(run!==anaRun)return;
+  if(stream)stream.style.display="none"; if(body)body.style.opacity="1";
+  $("anaTime").textContent="streamed "+new Date().toLocaleTimeString("en-US",{hour12:false});
   const days=(cal.days||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
   const labels=days.map(d=>d.date.slice(5));
   const daily=days.map(d=>+(d.total||0));
-  let run=0;const cum=daily.map(v=>{run=Math.round((run+v)*100)/100;return run;});
+  let r=0;const cum=daily.map(v=>{r=Math.round((r+v)*100)/100;return r;});
   const stats=at.stats||{};
   const snames=Object.keys(stats).sort((a,b)=>(stats[b].pnl||0)-(stats[a].pnl||0));
   const spnl=snames.map(s=>stats[s].pnl||0), swin=snames.map(s=>stats[s].win_rate||0);
-  const GREEN="#2ee6a6",RED="#ff5d6c",AMBER="#f0b132",GRID="rgba(255,255,255,.06)",TXT="#aeb9c7";
-  const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-    scales:{x:{grid:{color:GRID},ticks:{color:TXT,maxRotation:0,autoSkip:true}},y:{grid:{color:GRID},ticks:{color:TXT}}}};
-  // cards
-  $("anaCards").innerHTML=[["All-time","$"+fmtN(sp.all_pnl),cls(sp.all_pnl)],["Today","$"+fmtN(sp.today_pnl),cls(sp.today_pnl)],
-    ["Win rate",(sp.all_win_rate||0)+"%",""],["Trades",sp.all_trades+"",""]].map(([k,v,c])=>`<div class="btm"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
-  const mk=(id,cfg)=>{if(ANA[id])ANA[id].destroy();const el=$(id);if(el)ANA[id]=new Chart(el.getContext("2d"),cfg);};
-  mk("anaEquity",{type:"line",data:{labels,datasets:[{data:cum,borderColor:AMBER,backgroundColor:"rgba(240,177,50,.12)",fill:true,tension:.3,pointRadius:0}]},options:baseOpts});
-  mk("anaDaily",{type:"bar",data:{labels,datasets:[{data:daily,backgroundColor:daily.map(v=>v>=0?GREEN:RED)}]},options:baseOpts});
-  mk("anaStrat",{type:"bar",data:{labels:snames,datasets:[{data:spnl,backgroundColor:spnl.map(v=>v>=0?GREEN:RED)}]},options:baseOpts});
-  mk("anaWin",{type:"bar",data:{labels:snames,datasets:[{data:swin,backgroundColor:AMBER}]},options:baseOpts});
+  const GREEN="#2ee6a6",RED="#ff5d6c",AMBER="#f0b132",GRID="rgba(255,255,255,.05)",TXT="#69768a";
+  // animated count-up cards
+  $("anaCards").innerHTML=[["All-time","all",cls(sp.all_pnl)],["Today","tod",cls(sp.today_pnl)],["Win rate","wr",""],["Trades","tr",""]]
+    .map(([k,id,c])=>`<div class="btm"><div class="k">${k}</div><div class="v ${c}" id="ana-${id}">—</div></div>`).join("");
+  countUp($("ana-all"),+sp.all_pnl,v=>(v>=0?'+':'')+"$"+fmtN(v));
+  countUp($("ana-tod"),+sp.today_pnl,v=>(v>=0?'+':'')+"$"+fmtN(v));
+  countUp($("ana-wr"),+(sp.all_win_rate||0),v=>v.toFixed(1)+"%");
+  countUp($("ana-tr"),+sp.all_trades,v=>Math.round(v)+"");
+  const grid={grid:{color:GRID,drawBorder:false},ticks:{color:TXT,font:{size:10}}};
+  const base=(extra)=>Object.assign({responsive:true,maintainAspectRatio:false,animation:{duration:1100,easing:"easeOutQuart"},
+    plugins:{legend:{display:false},tooltip:{backgroundColor:"#0a0e16",borderColor:"#1d2735",borderWidth:1,titleColor:"#e8edf4",bodyColor:"#aeb9c7"}}},extra||{});
+  const mk=(id,cfg,glow)=>{if(ANA[id])ANA[id].destroy();const el=$(id);if(!el)return;cfg.plugins=[GLOW];const c=new Chart(el.getContext("2d"),cfg);c.$glow=glow;ANA[id]=c;};
+  // equity — thin glowing line + gradient fill
+  const eqEl=$("anaEquity");let grad="rgba(240,177,50,.18)";
+  if(eqEl){const g=eqEl.getContext("2d").createLinearGradient(0,0,0,230);g.addColorStop(0,"rgba(240,177,50,.32)");g.addColorStop(1,"rgba(240,177,50,0)");grad=g;}
+  mk("anaEquity",{type:"line",data:{labels,datasets:[{data:cum,borderColor:AMBER,borderWidth:2,backgroundColor:grad,fill:true,tension:.38,pointRadius:0,pointHoverRadius:4}]},
+    options:base({scales:{x:Object.assign({},grid),y:Object.assign({},grid)}})},"rgba(240,177,50,.6)");
+  // daily — thin bars
+  mk("anaDaily",{type:"bar",data:{labels,datasets:[{data:daily,backgroundColor:daily.map(v=>v>=0?GREEN:RED),maxBarThickness:9,borderRadius:2}]},
+    options:base({scales:{x:Object.assign({},grid),y:Object.assign({},grid)}})},"rgba(46,230,166,.4)");
+  // strategy + win — sleek horizontal bars (no fat candles)
+  mk("anaStrat",{type:"bar",data:{labels:snames,datasets:[{data:spnl,backgroundColor:spnl.map(v=>v>=0?GREEN:RED),maxBarThickness:16,borderRadius:3}]},
+    options:base({indexAxis:"y",scales:{x:Object.assign({},grid),y:Object.assign({},grid)}})},"rgba(46,230,166,.4)");
+  mk("anaWin",{type:"bar",data:{labels:snames,datasets:[{data:swin,backgroundColor:AMBER,maxBarThickness:16,borderRadius:3}]},
+    options:base({indexAxis:"y",scales:{x:Object.assign({min:0,max:100},grid),y:Object.assign({},grid)}})},"rgba(240,177,50,.5)");
 }
 
 /* ---------- Runner Scanner ---------- */
