@@ -26,10 +26,12 @@ STATE = os.path.join(ROOT, "data", "scalp_state.json")
 
 LIVE = True             # IBKR PAPER (real fills); sim-fallback. NOTE: delayed data handicaps scalp timing until a real-time feed is added.
 MAX_OPEN = 4
-MAX_HOLD_MIN = 90       # scalps are quick — time-stop out
-TARGET_R = 1.2          # small target relative to risk
-RSI_OVERSOLD = 35       # the flush must have pushed 5m RSI at/under this
-RSI_TURN = 42           # ...and it must be recovering back above this
+# Tuned 2026-06-27 via scalp_backtest sweep (60d/5m, 108 combos): best expectancy
+# was oversold 30 / turn 45 / target 2.0R / hold 120m → 56% win, +0.14R/trade.
+MAX_HOLD_MIN = 120      # give the bounce room to run
+TARGET_R = 2.0          # let winners run (was 1.2)
+RSI_OVERSOLD = 30       # demand a real flush (was 35)
+RSI_TURN = 45           # confirm a stronger turn-up (was 42)
 COOLDOWN = 1800         # per-name re-entry cooldown (s)
 NOTIONAL = 300.0        # $ per scalp (sizing)
 
