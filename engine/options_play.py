@@ -235,16 +235,26 @@ def best_put_spread(symbol, equity=500.0, budget_pct=0.30, min_dte=30, max_dte=4
 
 
 def spread_value(symbol, expiry, long_strike, short_strike, right="C"):
-    """Current net value (per share) of an open debit spread = long mid - short mid.
-    A debit spread is mathematically bounded to [0, width] — illiquid/stale yfinance
-    quotes can return values outside that (negative, or above the strike width), which
-    corrupts P&L. Clamp to the valid range so the sim ledger stays honest."""
-    lp = option_price(symbol, expiry, long_strike, right)
-    sp = option_price(symbol, expiry, short_strike, right)
-    if lp is None or sp is None:
+    """Closing value of a debit spread, by INTRINSIC value off the underlying.
+
+    Free yfinance per-strike option quotes are unreliable (stale/wide) and were
+    FABRICATING sim gains — e.g. a worthless OTM COST 955/940 put spread quoting $7
+    when COST was UP and intrinsic was ~$0.06. The underlying price is reliable, so we
+    value the spread by intrinsic (bounded to [0, width]). Honest, never fabricates;
+    conservative on time value (fine for a sim validation desk)."""
+    import yfinance as yf
+    try:
+        s = float(yf.Ticker(symbol).fast_info.get("lastPrice"))
+    except Exception:
+        return None
+    if not s:
         return None
     width = abs(float(long_strike) - float(short_strike))
-    return round(max(0.0, min(lp - sp, width)), 2)
+    if right.upper().startswith("P"):      # bear put spread: long = higher strike
+        val = max(0.0, min(float(long_strike) - s, width))
+    else:                                   # bull call spread: long = lower strike
+        val = max(0.0, min(s - float(long_strike), width))
+    return round(val, 2)
 
 
 def best_put(symbol, equity=500.0, budget_pct=0.30, min_dte=5, max_dte=21):
