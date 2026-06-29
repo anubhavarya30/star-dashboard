@@ -477,6 +477,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(_sd())
             if u.path == "/api/star_pnl":
                 return self._send_json(db.star_pnl())
+            if u.path == "/api/walkforward":
+                import json as _j, os as _os
+                p = _os.path.join("data", "walkforward.json")
+                if _os.path.exists(p):
+                    return self._send_json(_j.load(open(p)))
+                return self._send_json({"error": "not run yet — runs via scalp_walkforward.py"})
             if u.path == "/api/fvg":
                 def _fvg():
                     import fvg

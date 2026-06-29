@@ -95,6 +95,9 @@
   .sd-h{color:var(--amber);font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:8px 0 4px;font-weight:600}
   .sd-line{font-size:12.5px;color:var(--txt-2);padding:2px 0}
   .sd-line b{color:var(--txt)}
+  .valverdict{font-size:14px;font-weight:600;padding:14px 16px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.02);letter-spacing:.3px}
+  .valverdict.up{color:var(--up);border-color:rgba(46,230,166,.4);background:rgba(46,230,166,.06)}
+  .valverdict.down{color:var(--down);border-color:rgba(255,93,108,.4);background:rgba(255,93,108,.06)}
   /* ===== Live Analytics ===== */
   .livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--up);box-shadow:0 0 9px var(--up);animation:lpulse 1.6s infinite;margin:0 5px 0 9px;vertical-align:middle}
   .livetxt{font-size:9px;color:var(--up);letter-spacing:2px;text-shadow:0 0 8px rgba(46,230,166,.5)}
@@ -420,6 +423,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg>
     <span class="lbl">Analytics</span><span class="hint">charts</span>
   </div>
+  <div class="navitem" data-view="validation" tabindex="0" role="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    <span class="lbl">Validation</span><span class="hint">walk-forward</span>
+  </div>
   <div class="dfoot">Data is real (yfinance delayed, IBKR delayed, Webull public). Trade history shows real fills only.</div>
 </nav>
 
@@ -648,6 +655,18 @@
   </div>
 </div>
 
+<!-- ===== VALIDATION VIEW (walk-forward, cost-aware) ===== -->
+<div id="view-validation" class="view">
+  <div class="view-pad">
+    <section class="panel">
+      <div class="ph"><span class="accent">Edge Validation</span><span class="meta" id="valTime"></span></div>
+      <div class="run-warn" style="background:rgba(124,159,255,.08);border-color:rgba(124,159,255,.25);color:#bcd">
+        The honest test: params tuned on PAST data, scored on UNSEEN future data (out-of-sample), then charged real slippage + commission. A real edge is positive OOS <b>after costs</b>.</div>
+      <div id="valResult"><div class="empty">Loading validation…</div></div>
+    </section>
+  </div>
+</div>
+
 <footer class="foot">
   <b>Charts:</b> TradingView Lightweight Charts &nbsp;·&nbsp; <b>Quotes/Fundamentals:</b> yfinance (~15-min delayed) &nbsp;·&nbsp; <b>Movers:</b> Webull public data &nbsp;·&nbsp; <b>Portfolio:</b> live IBKR TWS &nbsp;·&nbsp; research terminal — not order routing.
 </footer>
@@ -841,6 +860,23 @@ function switchView(name){
   if(name==="brief"){loadBrief(false);}
   if(name==="paper"){loadPaper();}
   if(name==="analytics"){loadAnalytics();}
+  if(name==="validation"){loadValidation();}
+}
+async function loadValidation(){
+  let d;try{d=await api(`/api/walkforward`);}catch(e){$("valResult").innerHTML='<div class="errline">Validation unavailable.</div>';return;}
+  if(!d||d.error){$("valResult").innerHTML='<div class="empty">'+((d&&d.error)||'Not run yet.')+'</div>';return;}
+  $("valTime").textContent=d.generated_at?("run "+new Date(d.generated_at).toLocaleString("en-US",{hour12:false})):"";
+  const vc={good:"up",warn:"",bad:"down"}[d.verdict_class]||"";
+  const n=d.oos_net_after_costs||{},g=d.oos_gross||{};
+  const cards=[["In-sample (tuned)",d.in_sample_expectancy_R+"R","muted"],
+    ["OOS gross",g.expectancy_R+"R",cls(g.expectancy_R)],
+    ["OOS NET after costs",(n.expectancy_R>=0?"+":"")+n.expectancy_R+"R",cls(n.expectancy_R)],
+    ["Walk-fwd efficiency",(d.walk_forward_efficiency_pct||0)+"%",""],
+    ["OOS trades",(n.trades||0)+"",""],["OOS win rate",(n.win_rate||0)+"%",""]]
+    .map(([k,v,c])=>`<div class="btm"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
+  $("valResult").innerHTML=`<div class="valverdict ${vc}">${d.verdict}</div>
+    <div class="btmetrics" style="margin-top:14px">${cards}</div>
+    <div style="color:var(--muted);font-size:12px;margin-top:14px;line-height:1.6">${d.note||""}<br>Slippage modeled: ${d.slippage_bps} bps/side · ${d.symbols} names · ${d.folds} folds. Re-run: <code>scalp_walkforward.py</code></div>`;
 }
 
 /* ---------- Analytics (LIVE Chart.js — streaming feel, glowing thin charts) ---------- */
