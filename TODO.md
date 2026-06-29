@@ -2,6 +2,16 @@
 
 _Last updated: 2026-06-10_
 
+## 🔔 REMIND USER AFTER TODAY'S CLOSE (2026-06-29)
+**Flip real-time market data for the PAPER account, then relaunch TWS:**
+- Settings → Account Settings → "Paper Trading Account" → enable **"Share market data
+  subscriptions with paper trading account"** (the live acct t0pgun1930 already has
+  "US Real-Time Non Consolidated Streaming Quotes" — just not shared to DUQ923304).
+- Quit + relaunch TWS so it loads the entitlement.
+- Then Claude re-runs the real-time test; if AAPL returns a live price (not nan / no
+  10089), wire the data layer from delayed yfinance → IBKR real-time + flip scalp on-bar.
+(A Telegram nudge is also scheduled at 3:05pm CT weekdays via com.star.remind until done.)
+
 ## ⏳ AFTER MARKET CLOSE TODAY (2026-06-24) — user-requested, do NOT do during market hours
 **Main dashboard page redesign — surface the nightly CEO market read.**
 - REMOVE the account-value + trade-history block from the bottom of the main page.
