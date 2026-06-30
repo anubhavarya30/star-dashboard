@@ -104,10 +104,23 @@ def quote(sym):
         fi = t.fast_info
         last = num(fi.get("lastPrice"))
         prev = num(fi.get("previousClose"))
+        src = "delayed"
+        # REAL-TIME override: use the live feed (Alpaca/Webull) for the current price so
+        # the dashboard stops showing ~15-min-delayed yfinance numbers. prev_close/open/
+        # hi-lo stay from yfinance (static-enough); only `last` needs to be live.
+        try:
+            import realtime_data as rt
+            rp = rt.price(sym)
+            if rp:
+                last = rp
+                src = rt.source()
+        except Exception:
+            pass
         chg = (last - prev) if (last is not None and prev) else None
         chg_pct = (chg / prev * 100) if (chg is not None and prev) else None
         return {
             "symbol": sym.upper(),
+            "source": src,
             "last": last,
             "prev_close": prev,
             "change": chg,
@@ -443,8 +456,9 @@ class Handler(BaseHTTPRequestHandler):
                 closed = list(_csv.DictReader(p.open())) if p.exists() else []
                 st = rm.status()
                 openp = []
+                import realtime_data as _rt
                 for pos in st["open_positions"]:
-                    cur = num(yf.Ticker(pos["symbol"]).fast_info.get("lastPrice"))
+                    cur = _rt.price(pos["symbol"]) or num(yf.Ticker(pos["symbol"]).fast_info.get("lastPrice"))
                     risk = pos.get("init_risk") or (pos["entry"] - pos["stop"])
                     if cur is not None:
                         pos = {**pos, "current": round(cur, 2),
