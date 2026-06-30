@@ -466,8 +466,12 @@ class Handler(BaseHTTPRequestHandler):
                                "r_mult": round((cur - pos["entry"]) / risk, 2) if risk else 0,
                                "winning": cur >= pos["entry"]}
                     openp.append(pos)
+                # realized_today must be the UNIFIED STAR number (all desks: scalp+stock+
+                # fvg+gold), NOT risk_manager's stock-only figure — otherwise this tile
+                # disagrees with the STAR Total P&L + calendar (same paper_trades ledger).
                 return self._send_json({"closed": closed, "open": openp,
-                                        "realized_today": st["realized_pnl"]})
+                                        "realized_today": db.star_pnl()["today_pnl"],
+                                        "realized_stock_only": st["realized_pnl"]})
             if u.path == "/api/all_trades":
                 return self._send_json({"trades": db.paper_trades_all(int(q.get("limit",["500"])[0])),
                                         "stats": db.paper_stats()})
