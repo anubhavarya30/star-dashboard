@@ -106,30 +106,44 @@ def scan():
             lows = [float(x) for x in df["Low"].dropna().tolist()]
             if len(closes) < 40:
                 continue
-            c = round(closes[-1], 2)
-            if c < 10:                       # no low-priced junk (wide spreads, bad fills)
+            c0 = round(closes[-1], 2)
+            if c0 < 10:                      # no low-priced junk (wide spreads, bad fills)
                 continue
             rsi_now = ss.rsi(closes, 14)
             rsi_15 = ss.rsi(closes[:-3], 14)
             rsi_30 = ss.rsi(closes[:-6], 14)
             ema8 = _ema(closes, 8)
+            # cheap pre-filter on the (delayed) bars — only fetch real-time for candidates
             if not (min(rsi_15, rsi_30) <= RSI_OVERSOLD and rsi_now > rsi_15
-                    and rsi_now >= RSI_TURN and c > ema8 and c > closes[-2]):
+                    and rsi_now >= RSI_TURN and c0 > ema8 and c0 > closes[-2]):
                 continue
-            # stop just below the swing low, but CAPPED to a 1–3% band so a volatile
-            # name can't produce an absurd far stop (the JEM −78% bug).
+            # CANDIDATE -> confirm + price off the REAL-TIME current price (not 15-min delayed)
+            import realtime_data as rt
+            live = rt.price(sym)
+            c = live if live else c0
+            if not (c > ema8 and c > closes[-2]):     # re-confirm the bounce on the live price
+                continue
+            # stop just below the swing low, CAPPED to a 1–3% band (no JEM −78% bug)
             stop = round(min(c * 0.99, max(min(lows[-10:]) * 0.998, c * 0.97)), 2)
             risk = max(c - stop, 0.01)
             target = round(c + TARGET_R * risk, 2)
             out.append({"symbol": sym, "price": c, "stop": stop, "target": target,
-                        "rsi": round(rsi_now, 1),
-                        "note": f"oversold bounce (RSI {round(rsi_15)}→{round(rsi_now)}, reclaim 5m EMA8)"})
+                        "rsi": round(rsi_now, 1), "rt": bool(live),
+                        "note": f"oversold bounce (RSI {round(rsi_15)}→{round(rsi_now)}, reclaim EMA8){' [RT]' if live else ''}"})
         except Exception:
             continue
     return out
 
 
 def _price(sym):
+    """Real-time current price (alpaca/webull) for exits; falls back to yfinance."""
+    try:
+        import realtime_data as rt
+        p = rt.price(sym)
+        if p:
+            return p
+    except Exception:
+        pass
     import yfinance as yf
     try:
         return round(float(yf.Ticker(sym).fast_info.get("lastPrice")), 2)
