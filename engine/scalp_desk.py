@@ -47,34 +47,21 @@ def _broker_ok():
 
 
 def _universe():
-    """Liquid core + best-effort low-float runners. Cached 30 min."""
+    """LIQUID large/mid-caps only. We dropped the low-float runner junk (e.g. JEM) —
+    it gave garbage fills + absurd levels. Scalp wants tight spreads + clean data."""
     if _uni["syms"] and time.time() - _uni["t"] < 1800:
         return _uni["syms"]
     syms = []
     try:
         import star_score as ss
-        syms += list(ss.UNIVERSE)
-    except Exception:
-        pass
-    try:                                   # low-cap runners (best-effort, never fatal)
-        import runner_scanner as rs
-        for fn in ("scan", "candidates", "movers", "top_runners"):
-            f = getattr(rs, fn, None)
-            if callable(f):
-                r = f()
-                rows = r.get("runners") or r.get("candidates") if isinstance(r, dict) else r
-                for x in (rows or [])[:8]:
-                    s = (x.get("symbol") if isinstance(x, dict) else x)
-                    if s:
-                        syms.append(str(s).upper())
-                break
+        syms = list(ss.UNIVERSE)
     except Exception:
         pass
     out, seen = [], set()
     for s in syms:
         if s and s not in seen:
             seen.add(s); out.append(s)
-    _uni.update(t=time.time(), syms=out[:40])
+    _uni.update(t=time.time(), syms=out)
     return _uni["syms"]
 
 
@@ -120,6 +107,8 @@ def scan():
             if len(closes) < 40:
                 continue
             c = round(closes[-1], 2)
+            if c < 10:                       # no low-priced junk (wide spreads, bad fills)
+                continue
             rsi_now = ss.rsi(closes, 14)
             rsi_15 = ss.rsi(closes[:-3], 14)
             rsi_30 = ss.rsi(closes[:-6], 14)
@@ -127,7 +116,9 @@ def scan():
             if not (min(rsi_15, rsi_30) <= RSI_OVERSOLD and rsi_now > rsi_15
                     and rsi_now >= RSI_TURN and c > ema8 and c > closes[-2]):
                 continue
-            stop = round(min(min(lows[-10:]) * 0.998, c * 0.99), 2)
+            # stop just below the swing low, but CAPPED to a 1–3% band so a volatile
+            # name can't produce an absurd far stop (the JEM −78% bug).
+            stop = round(min(c * 0.99, max(min(lows[-10:]) * 0.998, c * 0.97)), 2)
             risk = max(c - stop, 0.01)
             target = round(c + TARGET_R * risk, 2)
             out.append({"symbol": sym, "price": c, "stop": stop, "target": target,
