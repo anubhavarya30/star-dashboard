@@ -52,3 +52,6 @@ data/reversal_watch.json
 obsidian_vault/
 data/walkforward.json
 data/realtime_status.json
+
+# Alpaca keys (NEVER commit)
+data/alpaca_config.json

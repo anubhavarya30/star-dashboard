@@ -1,0 +1,5 @@
+{
+  "_README": "Copy this to data/alpaca_config.json (same folder, gitignored) ON THE SERVER and paste your keys. Free real-time IEX data. Steps: 1) sign up free at alpaca.markets  2) Dashboard -> generate API Key + Secret (paper keys are fine — data is the same)  3) paste below  4) tell Claude 'check alpaca'.",
+  "key": "YOUR_ALPACA_API_KEY_ID",
+  "secret": "YOUR_ALPACA_API_SECRET"
+}
