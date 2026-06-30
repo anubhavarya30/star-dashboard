@@ -51,3 +51,4 @@ data/reversal_watch.json
 # Obsidian vault (generated, synced separately)
 obsidian_vault/
 data/walkforward.json
+data/realtime_status.json

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.star.rtcheck</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>__REPO__/scripts/rtcheck.sh</string></array>
+  <key>StartInterval</key><integer>1800</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/tmp/star_rtcheck.log</string><key>StandardErrorPath</key><string>/tmp/star_rtcheck.log</string>
+</dict></plist>
