@@ -94,7 +94,7 @@ def research(max_watch=6):
            "indices": idx,
            "world": world, "world_narrative": world_narr,
            "review": {k: review.get(k) for k in ("net", "cumulative", "by_source", "scoreboard", "lessons", "best", "worst")} if review else {},
-           "narrative": _narrative(idx, risk_level, watch, rev_state),
+           "narrative": _narrative(idx, risk_level, watch, rev_state, world),
            "gex_flip": (gex or {}).get("gamma_flip"), "gex_regime": (gex or {}).get("regime"),
            "watchlist": watch,
            "shorts_context": [{"symbol": s.get("symbol"), "score": s.get("score"),
@@ -123,32 +123,47 @@ def _indices():
     return out
 
 
-def _narrative(idx, regime, watch, reversal):
-    """Auto-compose the prose market read from the agents' data — rotation analysis,
-    why the watchlist was armed, the armed names. Refreshes every nightly CEO run."""
+def _narrative(idx, regime, watch, reversal, world=None):
+    """Auto-compose the prose market read from the agents' data.
+
+    CONSISTENCY: the tape call is anchored to the LIVE overnight read (world futures)
+    and the news regime — one source of truth — so it can never say 'risk-off' and
+    'risk appetite is on' in the same breath (the old bug: the label came from news
+    while the rotation line came from yfinance, and the two were never reconciled).
+
+    NO STALE CLAIMS: pre-open, yfinance daily bars are YESTERDAY's close, so index
+    %-moves are prior-session, not today. They're labelled 'Prior close' — never
+    presented as the live tape (that's what made the brief forward stale info)."""
+    world = world or {}
+    off = (regime == "high") or str(world.get("global_bias", "")).lower().startswith("risk-off")
+    fut = world.get("futures") or {}
     d = {i["name"]: i for i in idx}
     nas = d.get("Nasdaq", {}).get("chg_pct")
     dow = d.get("Dow", {}).get("chg_pct")
-    spx = d.get("S&P 500", {}).get("chg_pct")
     vix = d.get("VIX", {})
     parts = []
-    parts.append("The tape is <b>risk-off</b>." if regime == "high" else "The tape is <b>constructive</b>.")
+    # 1) TAPE — from live overnight futures, consistent with the regime label
+    tone = "risk-off" if off else "constructive"
+    if fut:
+        fbits = ", ".join(f"{k} {v:+.1f}%" for k, v in fut.items() if v is not None)
+        parts.append(f"Tape is <b>{tone}</b> into the open — overnight futures {fbits}." if fbits
+                     else f"Tape is <b>{tone}</b> into the open.")
+    else:
+        parts.append(f"Tape is <b>{tone}</b> into the open.")
+    # 2) PRIOR-SESSION close context (explicitly labelled — not today's move)
     if nas is not None and dow is not None:
         spread = nas - dow
-        if spread <= -1.0:
-            parts.append(f"Nasdaq {nas:+.1f}% vs Dow {dow:+.1f}% — the spread is the whole story: "
-                         f"money is rotating <b>out of tech, into value/defensives</b>. That's a rotation, not a random down day.")
-        elif spread >= 1.0:
-            parts.append(f"Nasdaq {nas:+.1f}% leading Dow {dow:+.1f}% — tech/growth is in favor; risk appetite is on.")
-        else:
-            parts.append(f"Nasdaq {nas:+.1f}% / Dow {dow:+.1f}% — broad move, no strong rotation either way.")
+        rot = ("tech led — money into growth" if spread >= 1.0 else
+               "value/defensives led — money out of tech" if spread <= -1.0 else
+               "broad, no strong rotation")
+        parts.append(f"Prior close: Nasdaq {nas:+.1f}% / Dow {dow:+.1f}% ({rot}).")
     if vix.get("chg_pct") is not None:
         v = vix.get("price")
-        parts.append(f"VIX {v} ({vix['chg_pct']:+.1f}%) — {'fear is building' if (vix['chg_pct'] or 0) > 8 else 'orderly, not panic'}.")
+        parts.append(f"VIX {v} — {'fear building' if (vix['chg_pct'] or 0) > 8 else 'orderly, not panic'}.")
     if watch:
         names = ", ".join(w["symbol"] for w in watch[:6])
         parts.append(f"STAR armed the relative-strength leaders that are holding up: <b>{names}</b> — "
-                     f"{'leaders on a weak tape' if regime == 'high' else 'the strongest 9-vote setups'}, not falling knives.")
+                     f"{'leaders on a weak tape' if off else 'the strongest 9-vote setups'}, not falling knives.")
     else:
         parts.append("Nothing cleared the bar — patience over forcing a bad trade.")
     hot = [k for k, v in reversal.items() if v.get("trigger")]
