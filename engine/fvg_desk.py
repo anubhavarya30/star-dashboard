@@ -21,6 +21,10 @@ MAX_OPEN = 3
 NOTIONAL = 1000.0      # $ per FVG swing (sizing)
 COOLDOWN = 86400       # one entry per name per day
 LIVE = True            # route through IBKR PAPER (real fills); sim-fallback if a fill fails
+# BENCHED 2026-07-01: FVG is the only losing desk (-$177.75 all-time, 18% win, -$16/trade).
+# It single-handedly turns STAR from +$131 to -$46. New entries OFF until its edge is
+# proven fixable; manage() still runs so the open positions exit cleanly (no orphans).
+ENTRIES_ENABLED = False
 
 
 def _broker_ok():
@@ -146,10 +150,11 @@ def tick():
     if phase == "closed":
         return "market closed"
     manage()
-    if phase == "open":
+    if phase == "open" and ENTRIES_ENABLED:
         maybe_enter()
     s = _load()
-    return f"fvg tick [{phase}] | open {len(s['open'])} | realized ${s['realized']} | {s['trades']} closed"
+    tag = "" if ENTRIES_ENABLED else " [BENCHED: manage-only]"
+    return f"fvg tick [{phase}]{tag} | open {len(s['open'])} | realized ${s['realized']} | {s['trades']} closed"
 
 
 def stats():
