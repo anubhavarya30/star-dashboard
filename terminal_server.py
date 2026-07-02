@@ -241,21 +241,49 @@ def profile(sym):
     return cached(f"p:{sym}", build)
 
 
+def _news_epoch(content, n):
+    """Best-effort publish time (unix secs) across yfinance's old + new news shapes."""
+    import datetime as _dt
+    # new shape: ISO string in content.pubDate / displayTime
+    for k in ("pubDate", "displayTime"):
+        v = content.get(k)
+        if v:
+            try:
+                return _dt.datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                pass
+    # old shape: unix seconds
+    v = n.get("providerPublishTime") or content.get("providerPublishTime")
+    try:
+        return float(v) if v else None
+    except Exception:
+        return None
+
+
 def news(sym):
     def build():
+        import time as _t
+        now = _t.time()
+        MAX_AGE = 7 * 86400          # drop anything older than 7 days — no stale headlines
         out = []
         try:
-            for n in (yf.Ticker(sym).news or [])[:8]:
+            for n in (yf.Ticker(sym).news or []):
                 content = n.get("content", n)
                 title = content.get("title") or n.get("title")
                 if not title:
                     continue
+                ep = _news_epoch(content, n)
+                if ep and (now - ep) > MAX_AGE:
+                    continue                     # too old -> skip (staleness guard)
                 pub = content.get("provider", {}).get("displayName") if isinstance(content.get("provider"), dict) else n.get("publisher")
                 url = (content.get("canonicalUrl", {}) or {}).get("url") if isinstance(content.get("canonicalUrl"), dict) else n.get("link")
-                out.append({"title": title, "publisher": pub or "", "url": url or ""})
+                out.append({"title": title, "publisher": pub or "", "url": url or "",
+                            "published": (__import__("datetime").datetime.fromtimestamp(ep).isoformat() if ep else None),
+                            "age_min": (int((now - ep) / 60) if ep else None)})
         except Exception:
             pass
-        return {"symbol": sym.upper(), "items": out}
+        out.sort(key=lambda x: x.get("age_min") if x.get("age_min") is not None else 10**9)  # freshest first
+        return {"symbol": sym.upper(), "items": out[:8]}
     return cached(f"n:{sym}", build)
 
 

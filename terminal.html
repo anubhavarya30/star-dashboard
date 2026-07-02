@@ -739,9 +739,10 @@ async function loadStats(){
   $("summary").textContent=p.summary||"No description available.";
   $("recoTag").innerHTML=p.recommendation?`Analyst <b>${p.recommendation.toUpperCase()}</b>`:"";
 }
+function newsAge(m){if(m==null)return"";if(m<60)return m+"m ago";if(m<1440)return Math.floor(m/60)+"h ago";return Math.floor(m/1440)+"d ago";}
 async function loadNews(){
   const n=await api(`/api/news?sym=${CUR}`),items=n.items||[];
-  $("news").innerHTML=items.length?items.map(i=>`<a href="${i.url}" target="_blank" rel="noopener"><span class="tt">${i.title}</span><span class="src">${i.publisher||""}</span></a>`).join(""):'<div class="empty">No recent headlines.</div>';
+  $("news").innerHTML=items.length?items.map(i=>`<a href="${i.url}" target="_blank" rel="noopener"><span class="tt">${i.title}</span><span class="src">${i.publisher||""}${i.age_min!=null?" · "+newsAge(i.age_min):""}</span></a>`).join(""):'<div class="empty">No recent headlines.</div>';
 }
 async function loadMktStat(){
   let d;try{d=await api(`/api/calendar`);}catch(e){return;}
