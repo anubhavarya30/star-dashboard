@@ -189,8 +189,8 @@ def maybe_enter():
     try:
         import market_calendar as mc
         if mc.long_weekend_ahead():
-            min_score = 7
-            _log("pre-holiday session — raising entry bar to score>=7 (low volume/gap risk)")
+            min_score = 6
+            _log("pre-holiday session — raising entry bar to score>=6 (low volume/gap risk)")
     except Exception:
         pass
     # macro news guard: on a RISK-OFF day, don't BLOCK entirely — raise the bar so
@@ -200,8 +200,8 @@ def maybe_enter():
         import news_watch
         nw = news_watch.assess()
         if nw.get("risk_level") == "high":
-            min_score = max(min_score, 7)
-            _log(f"RISK-OFF: {nw.get('risk_off_count')} macro headlines — bar raised to score>=7 (relative strength only)")
+            min_score = max(min_score, 6)
+            _log(f"RISK-OFF: {nw.get('risk_off_count')} macro headlines — bar raised to score>=6 (relative strength only)")
     except Exception:
         pass
     # CEO watchlist (overnight research) focuses the day's universe; falls back to full scan.

@@ -30,7 +30,7 @@ CFG = {
     "risk_pct": 0.05,       # 5% risk per trade -> $250 (survivable; was 15% on $500)
     "daily_pct": 0.15,      # 15% daily max loss -> $750, then flat
     "max_pos_pct": 0.40,    # one position's cost <= 40% of equity -> $2,000 (diversify)
-    "max_open": 3,          # up to 3 concurrent positions now that capital allows
+    "max_open": 4,          # up to 4 concurrent positions (loosened 2026-07-01 to let the proven stock edge trade more)
     "min_rr": 1.2,          # require >= 1.2R
 }
 
