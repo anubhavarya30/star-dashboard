@@ -1,7 +1,59 @@
 # STAR — Project State & Continuation Notes
 
 > **Read this first when the session restarts. Do NOT pretend to start fresh — continue from here.**
-> Last updated: 2026-06-12. User: anubhav.arya789@gmail.com
+> Last updated: 2026-07-01. User: anubhav.arya789@gmail.com
+
+---
+
+## 🗓️ Session log — 2026-07-01 (real-time wiring + P&L truth + FVG benched)
+
+**REAL-TIME DATA IS LIVE.** New `engine/realtime_data.py` — unified provider, priority
+**Alpaca (free IEX, needs key) → Webull public (no key, ACTIVE now) → yfinance (delayed
+fallback)**. Wired into BOTH the scalp engine (confirms/prices entries + exits off the
+live price; pre-filters on cheap delayed bars, only fetches RT for candidates to respect
+rate limits) AND the dashboard (`terminal_server.quote()` header + mag7 + open-position
+P&L now show live price, returns `source`). Alpaca NOT keyed yet on server — drop
+key+secret into `data/alpaca_config.json` (gitignored) to auto-promote it to primary.
+
+**P&L NOW RECONCILES TO ONE NUMBER.** Root cause of the "dashboard shows wrong/stale
+data" complaints: `/api/paper_trades` `realized_today` was sourced from `risk_manager`
+(STOCK desk only) while `/api/star_pnl` + `/api/pnl_calendar` summed all desks from the
+`paper_trades` table → three tiles, three numbers. Fixed: `realized_today` now reads
+`db.star_pnl()["today_pnl"]`. All P&L surfaces agree. (Dashboard refresh = 20s data +
+20s server cache; that was never the bug — the SOURCE was.)
+
+**JEM phantom purged.** A −$132.08 JEM scalp (id 160) from stale pre-fix code (entry
+$4.80 < $10 floor, no stop, IBKR rejected → SIM) was distorting P&L. Deleted after
+DB backup (`/tmp/star_trading.pre-jem-purge.*.db`). All-time went −$46 → +$85.94.
+
+**CEO narrative fixed (was contradictory + stale).** `star_ceo._narrative()` said
+"risk-off" AND "risk appetite is on" together — label came from news regime, rotation
+line came independently from yfinance. Worse, `_indices()` pre-open returns YESTERDAY's
+daily close-to-close, presented as today's tape. Fixed: tape call anchored to LIVE
+overnight futures + regime (one source, can't self-contradict); index moves labelled
+"Prior close." Now passes `world` into `_narrative`.
+
+**⚠️ FVG DESK BENCHED (`engine/fvg_desk.py` ENTRIES_ENABLED=False).** Evidence: FVG is
+the ONLY losing desk — −$177.75 all-time, 18% win, −$16/trade; it flips STAR from +$131
+to −$46. New entries OFF; `manage()` still runs so its open positions (JPM/TSM/AXP) exit
+cleanly, no orphans. **Do NOT re-enable on a hunch — pull its backtest first, fix or
+retire.** Per-desk all-time: stock +$61.60 (61.5% win, +$4.74/trade = THE edge),
+scalp +$69.55 (49% win, +$0.88 thin), gold flat, fvg −$177.75.
+
+**DESK POLICY GOING FORWARD (stop the daily strategy-switching):** stock leads (proven
+edge — pending ask: loosen its gate so it trades more than 13×), scalp secondary on RT
+feed, FVG benched, gold harmless. Config stays put to build a real sample.
+
+**ruflo installed** dev-scoped in `~/star/ruflo-dev` (NOT in trading repo, NOT on
+server) — a Claude Code orchestration harness for BUILDING, not a trading component.
+
+**IBKR:** was blocked at the open by Error 10141 (paper disclaimer); got accepted mid-day
+(FVG filled `via ibkr`). Permanent hands-off fix still = IBC (needs creds, not installed).
+
+**FVG-only lockdown incident:** user asked for FVG-only for 2026-07-01; I disabled+booted
+scalp/papertrader/activewatch/gold. Watchdog then Telegrammed "activewatch NOT loaded"
+every 30min (expected — it was disabled). FVG-only LOST −$132 (5/5 losers). Reverted:
+all four desks re-enabled + bootstrapped. Lesson logged: benched winners, ran the loser.
 
 ---
 
