@@ -34,6 +34,7 @@ RSI_OVERSOLD = 30       # demand a real flush (was 35)
 RSI_TURN = 45           # confirm a stronger turn-up (was 42)
 COOLDOWN = 1800         # per-name re-entry cooldown (s)
 NOTIONAL = 500.0        # $ per scalp — scalp is the primary engine now (user-set 2026-06-27)
+MAX_TRADE_RISK = 15.0   # hard $ cap on a single scalp's loss (skips high-priced names where 1 share = uncontrolled risk)
 
 _uni = {"t": 0, "syms": []}
 
@@ -126,6 +127,13 @@ def scan():
             # stop just below the swing low, CAPPED to a 1–3% band (no JEM −78% bug)
             stop = round(min(c * 0.99, max(min(lows[-10:]) * 0.998, c * 0.97)), 2)
             risk = max(c - stop, 0.01)
+            # DOLLAR-RISK CAP: shares floor at 1, so on a high-priced name (MU $1010, CAT
+            # $979) one share = uncontrolled exposure and the per-trade loss blows past the
+            # $500 notional. Skip any name whose minimum (1-share) risk exceeds the budget —
+            # every scalp loss stays survivable (2026-07-02 fix; MU/CAT/AMD bled here).
+            shares_est = max(1, int(NOTIONAL / c))
+            if risk * shares_est > MAX_TRADE_RISK:
+                continue
             target = round(c + TARGET_R * risk, 2)
             out.append({"symbol": sym, "price": c, "stop": stop, "target": target,
                         "rsi": round(rsi_now, 1), "rt": bool(live),
