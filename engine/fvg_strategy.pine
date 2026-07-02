@@ -1,0 +1,117 @@
+//@version=5
+// =============================================================================
+// STAR — Fair Value Gap (FVG) support-long · Strategy Tester port
+// -----------------------------------------------------------------------------
+// 1:1 port of engine/fvg.py (find_fvgs + backtest/signal) so TradingView's
+// Strategy Tester results are directly comparable to STAR's live FVG desk.
+// This is the desk that has BLED live (-$207 all-time, 2 wins of 12) — the point
+// of this file is to prove it has a real edge on deep intraday history, or kill it.
+//
+// EDGE DEFINITION (identical to engine/fvg.py):
+//   Bullish FVG at bar i : high[i-2] < low[i]  -> gap zone [high[i-2], low[i]]
+//                          glo = high[i-2] (gap bottom), ghi = low[i] (gap top)
+//   Entry  : a later bar (within maxWait bars) dips INTO the zone but holds it —
+//              low <= ghi  AND  close > glo   (first such bar consumes the gap)
+//   HTF bias: only take the long if close >= EMA200 (uptrend). Else skip the gap.
+//   Stop   : glo * 0.997  (just below the gap)
+//   Target : entry + targetR * (entry - stop)   (targetR = 2 by default)
+//   Fills  : entry at signal-bar close (process_orders_on_close=true) — matches
+//              the Python backtest, which records entry=close[j] and scans stop/
+//              target from bar j+1 onward. Stop is checked before target (Python
+//              priority) via a stop-loss exit.
+//
+// HOW TO USE:
+//   1. TradingView -> open a chart of a name in the STAR universe (NVDA, AAPL,
+//      MSFT, AMD, TSM, META, GOOGL, AMZN, SPY, QQQ, TSLA, AVGO).
+//   2. Pine Editor -> paste this whole file -> "Add to chart".
+//   3. Strategy Tester tab -> read Net Profit, % Profitable, Profit Factor,
+//      Max Drawdown, Total Closed Trades.
+//   4. Try daily first (matches live, which is daily bars) — that is the
+//      apples-to-apples test. Then try 1h/15m to see if intraday has an edge.
+//   5. VERDICT: keep the desk live only if Profit Factor > 1.3 over 30+ trades.
+//      Below that -> retire the desk. Report the numbers back to Claude.
+//
+// NOTE ON FAITHFULNESS: live desk sizes $1000 notional across a universe with
+// MAX_OPEN=3; this single-symbol tester holds one position at a time. The EDGE
+// (entry/stop/target/HTF) is identical — that is what we are proving here.
+// =============================================================================
+strategy("STAR FVG Support Long", overlay=true, initial_capital=10000,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+     commission_type=strategy.commission.percent, commission_value=0.0,
+     slippage=5, pyramiding=0, calc_on_every_tick=false,
+     process_orders_on_close=true)
+
+// ---------- Inputs (tune in the Strategy Tester gear) ----------
+maxWait   = input.int(15,   "Max bars to wait for retest after gap", minval=1, group="FVG")
+targetR   = input.float(2.0,"Target = entry + R*risk", step=0.5, group="FVG")
+stopBuf   = input.float(0.003,"Stop buffer below gap bottom (0.003 = 0.3%)", step=0.001, group="FVG")
+useHTF    = input.bool(true, "HTF uptrend filter (close >= EMA200)", group="FVG")
+htfLen    = input.int(200,  "HTF EMA length", group="FVG")
+
+htfEma = ta.ema(close, htfLen)
+
+// ---------- Active bullish-FVG zones (parallel arrays) ----------
+// Each active gap stores its bottom (glo), top (ghi), and the bar it formed on.
+var array<float> gLo  = array.new_float()
+var array<float> gHi  = array.new_float()
+var array<int>   gBar = array.new_int()
+
+// New bullish FVG forms on THIS bar when high two bars ago < current low.
+// (bar i in the Python array == current bar here; high[i-2]==high[2], low[i]==low[0].)
+bullFVG = high[2] < low
+if bullFVG
+    array.push(gLo, high[2])
+    array.push(gHi, low)
+    array.push(gBar, bar_index)
+
+// ---------- Scan active gaps for the first retest, oldest first ----------
+enterNow = false
+var float entryPx = na
+var float stopPx  = na
+var float tgtPx   = na
+
+if array.size(gLo) > 0
+    i = 0
+    while i < array.size(gLo)
+        glo = array.get(gLo, i)
+        ghi = array.get(gHi, i)
+        bar0 = array.get(gBar, i)
+        age = bar_index - bar0
+        // expire gaps older than the retest window
+        if age > maxWait
+            array.remove(gLo, i)
+            array.remove(gHi, i)
+            array.remove(gBar, i)
+            // do not increment i — next element shifted into this slot
+        else if age >= 1 and low <= ghi and close > glo
+            // FIRST retest touch consumes this gap (whether or not we enter)
+            array.remove(gLo, i)
+            array.remove(gHi, i)
+            array.remove(gBar, i)
+            // take the long only in an uptrend (HTF bias); else the gap is spent
+            if (not useHTF) or close >= htfEma
+                if strategy.position_size == 0 and not enterNow
+                    st = glo * (1.0 - stopBuf)
+                    rk = close - st
+                    if rk > 0
+                        entryPx := close
+                        stopPx  := st
+                        tgtPx   := close + targetR * rk
+                        enterNow := true
+            // gap removed, do not increment i
+        else
+            i := i + 1
+
+// ---------- Orders ----------
+if enterNow and strategy.position_size == 0
+    strategy.entry("FVG", strategy.long)
+    // stop checked before target (Python priority) — stop is the loss leg
+    strategy.exit("FVG-x", from_entry="FVG", stop=stopPx, limit=tgtPx)
+
+// reset the one-shot latch each bar after orders are placed
+enterNow := false
+
+// ---------- Visuals ----------
+plot(useHTF ? htfEma : na, "EMA200", color=color.new(color.orange, 40))
+plotshape(bullFVG, "bull FVG", shape.triangleup, location.belowbar,
+     color=color.new(color.teal, 30), size=size.tiny)
