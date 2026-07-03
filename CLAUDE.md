@@ -128,6 +128,17 @@ catches this and Telegrams `⚠️ IBKR DISCONNECTED`, re-nagging every 30 min. 
 the gap: run `scripts/setup_ibc.sh` and put paper creds in `~/ibc/config.ini` (secrets,
 never committed) — user must supply credentials.
 
+**IBKR "connection refused" RECOVERY RUNBOOK (user directive 2026-07-03):** when
+`/api/ibkr_broker` shows `connected:false` / `ConnectionRefusedError` on 7497, a soft
+reconnect is NOT enough — **kill the WHOLE TWS/Gateway app, relaunch it, then log back
+into PAPER (DU) on 7497.** Order: (1) fully quit TWS (not just the login dialog —
+`pkill` the java process or Cmd-Q the app), (2) relaunch TWS, (3) log into the paper
+(DU, port 7497) account, API enabled. A stuck/half-connected TWS keeps refusing the
+API socket until it's killed and restarted clean. NOTE: the login step needs the user
+(credentials + 2FA) — Claude can kill/relaunch the app but CANNOT log in. Also don't
+confuse TWS with **thinkorswim** (TD/Schwab, a different java app that may be running) —
+only IBKR TWS/Gateway serves the 7497 API.
+
 **CLAUDE IS NOT A DAEMON:** Claude does NOT auto-restart itself after a crash — the
 system is built to recover via launchd without Claude. The in-chat 5-min logs/P&L
 display is a session-only cron loop that dies when the Claude session ends.
