@@ -1,0 +1,57 @@
+//@version=5
+// STAR — GEX desk MECHANICS backtest (EMA stack + volume, NO gamma).
+// Isolates the strippable, historically-testable part of Nick Ireland's GEX system:
+//   step 5 (EMA stack = direction) + step 6 volume confirmation.
+// Gamma (steps 3-4) needs live options open-interest and has NO free history, so it
+// cannot be here. This only asks: does the EMA-stack + volume TRIGGER have a directional
+// edge on SPY? Entry in stack direction on volume confirm; ATR stop + R-multiple target.
+//
+// RESULT 2026-07-03 (SPY 1h, 2015-2026, $1000-cash):
+//   long+short : PF 1.005 (breakeven, 1227 trades, 35.8% win)
+//   longs-only : PF 1.197 (713 trades, 38.7% win)   <- shorts are the bleeder (SPY drift)
+// VERDICT: mechanics alone ~breakeven; the GAMMA overlay is the alpha (forward-tested in
+// the live gex_desk scorecard, since gamma has no backtestable history). The neg-gamma
+// SHORT leg is the riskiest and must be genuinely regime-gated or it bleeds.
+strategy("STAR GEX mechanics: EMA stack + volume", overlay=true, initial_capital=100000,
+     default_qty_type=strategy.cash, default_qty_value=1000,
+     commission_type=strategy.commission.percent, commission_value=0.0,
+     slippage=2, pyramiding=0, process_orders_on_close=true)
+
+e8len   = input.int(8,   "EMA fast")
+e21len  = input.int(21,  "EMA mid")
+e50len  = input.int(50,  "EMA slow")
+volMult = input.float(1.2, "Volume mult of SMA", step=0.1)
+volLen  = input.int(20,  "Volume SMA len")
+atrLen  = input.int(14,  "ATR len")
+atrStop = input.float(1.5,"ATR stop mult", step=0.25)
+targetR = input.float(2.0,"Target R", step=0.5)
+allowLong  = input.bool(true,  "Longs")
+allowShort = input.bool(true,  "Shorts")   // set false for the longs-only variant (PF 1.197)
+
+e8  = ta.ema(close, e8len)
+e21 = ta.ema(close, e21len)
+e50 = ta.ema(close, e50len)
+atr = ta.atr(atrLen)
+volOk = volume >= volMult * ta.sma(volume, volLen)
+
+stackUp   = e8 > e21 and e21 > e50 and close >= e8
+stackDown = e8 < e21 and e21 < e50 and close <= e8
+
+longSig  = allowLong  and stackUp   and volOk
+shortSig = allowShort and stackDown and volOk
+
+if strategy.position_size == 0
+    if longSig
+        st = close - atrStop * atr
+        if st < close
+            strategy.entry("L", strategy.long)
+            strategy.exit("Lx", from_entry="L", stop=st, limit=close + targetR * (close - st))
+    else if shortSig
+        st = close + atrStop * atr
+        if st > close
+            strategy.entry("S", strategy.short)
+            strategy.exit("Sx", from_entry="S", stop=st, limit=close - targetR * (st - close))
+
+plot(e8,  "EMA8",  color=color.aqua)
+plot(e21, "EMA21", color=color.orange)
+plot(e50, "EMA50", color=color.red)

@@ -29,6 +29,14 @@ scorecard" — the desk forward-tests the edge live in SIM and stats() is the sc
 The non-gamma mechanics (EMA stack + volume + level fade/continuation) can be separately
 sanity-checked in TradingView; the gamma source cannot. Entries stay OFF until the
 scorecard shows a real edge.
+
+MECHANICS BACKTEST 2026-07-03 (SPY 1h, EMA stack + volume, ATR stop + 2R, NO gamma):
+  long+short = PF 1.005 (breakeven, 1227 trades); longs-only = PF 1.197 (713 trades).
+  -> The stack+volume TRIGGER alone has ~no standalone edge; the SHORT side is the
+     bleeder (SPY drifts up, blind stack-down shorts give back the longs' gains). This
+     confirms the design: the alpha is the GAMMA overlay, not the mechanics. Practical
+     read: the neg-gamma SHORT leg is the riskiest and must be genuinely gated by regime
+     (dealer hedging accelerating a selloff) or it bleeds; the LONG legs stand better.
 """
 import json
 import os
