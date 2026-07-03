@@ -515,6 +515,8 @@ class Handler(BaseHTTPRequestHandler):
                             import fvg_desk; opens = fvg_desk.stats().get("open", [])
                         elif src == "option":
                             import options_desk; opens = options_desk.stats().get("open", [])
+                        elif src == "gex":
+                            import gex_desk; opens = gex_desk.stats().get("open", [])
                         elif src == "stock":
                             import risk_manager as rm; opens = rm.status().get("open_positions", [])
                     except Exception:
@@ -544,6 +546,11 @@ class Handler(BaseHTTPRequestHandler):
                     import fvg_desk
                     return fvg_desk.stats()
                 return self._send_json(cached("fvg_desk", _fd, ttl=20))
+            if u.path == "/api/gex_desk":
+                def _gd():
+                    import gex_desk
+                    return gex_desk.stats()
+                return self._send_json(cached("gex_desk", _gd, ttl=20))
             if u.path == "/api/review":
                 def _rv():
                     import daily_review
