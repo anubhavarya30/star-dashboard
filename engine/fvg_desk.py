@@ -21,15 +21,15 @@ MAX_OPEN = 3
 NOTIONAL = 1000.0      # $ per FVG swing (sizing)
 COOLDOWN = 86400       # one entry per name per day
 LIVE = True            # route through IBKR PAPER (real fills); sim-fallback if a fill fails
-# RETIRED 2026-07-02: FVG edge disproven in TradingView Strategy Tester. NVDA daily,
-# full 1999-2026 history, 408 trades ($1000-cash sizing = live notional): 23.5% win
-# (96W/303L/9BE), avg loss -13.56% vs avg win +5.76%, expectancy ~-9%/trade,
-# Profit Factor ~0.13 (verdict floor was 1.3). NVDA is the universe's strongest
-# uptrend = most favorable name for a bullish-FVG-in-uptrend long; it still bled 408
-# trades deep, matching the live tape (-$207 all-time, 2W/12). No moving goalposts:
-# the desk has NO edge. Entries OFF permanently. manage() still runs so any open
-# position exits cleanly (no orphans). Do NOT re-enable.
-ENTRIES_ENABLED = False   # PERMANENT — do not flip. See retirement note above.
+# UNDER IMPROVEMENT 2026-07-02: baseline FVG has no edge yet. TradingView Strategy
+# Tester, NVDA daily, full 1999-2026, 408 trades ($1000-cash = live notional):
+# 23.5% win (96W/303L/9BE), avg loss -13.56% vs avg win +5.76%, PF ~0.13. The
+# asymmetry is BACKWARDS (losers bigger than winners) — the fix targets are the stop
+# (0.3% is too tight, whipsaws) and the 2R target (too far, only 23% hit). Iterating
+# in the Pine tester: tune stop/target/filters -> re-backtest -> re-verdict (PF>1.3
+# over 30+). Entries stay OFF until the improved params clear that bar. manage() runs
+# so open positions exit cleanly (no orphans).
+ENTRIES_ENABLED = False   # OFF until improved params prove PF>1.3 in TV. Do not flip on a hunch.
 
 
 def _broker_ok():
