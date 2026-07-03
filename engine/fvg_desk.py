@@ -21,10 +21,15 @@ MAX_OPEN = 3
 NOTIONAL = 1000.0      # $ per FVG swing (sizing)
 COOLDOWN = 86400       # one entry per name per day
 LIVE = True            # route through IBKR PAPER (real fills); sim-fallback if a fill fails
-# BENCHED 2026-07-01: FVG is the only losing desk (-$177.75 all-time, 18% win, -$16/trade).
-# It single-handedly turns STAR from +$131 to -$46. New entries OFF until its edge is
-# proven fixable; manage() still runs so the open positions exit cleanly (no orphans).
-ENTRIES_ENABLED = False
+# RETIRED 2026-07-02: FVG edge disproven in TradingView Strategy Tester. NVDA daily,
+# full 1999-2026 history, 408 trades ($1000-cash sizing = live notional): 23.5% win
+# (96W/303L/9BE), avg loss -13.56% vs avg win +5.76%, expectancy ~-9%/trade,
+# Profit Factor ~0.13 (verdict floor was 1.3). NVDA is the universe's strongest
+# uptrend = most favorable name for a bullish-FVG-in-uptrend long; it still bled 408
+# trades deep, matching the live tape (-$207 all-time, 2W/12). No moving goalposts:
+# the desk has NO edge. Entries OFF permanently. manage() still runs so any open
+# position exits cleanly (no orphans). Do NOT re-enable.
+ENTRIES_ENABLED = False   # PERMANENT — do not flip. See retirement note above.
 
 
 def _broker_ok():
