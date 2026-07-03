@@ -1,7 +1,55 @@
 # STAR — Project State & Continuation Notes
 
 > **Read this first when the session restarts. Do NOT pretend to start fresh — continue from here.**
-> Last updated: 2026-07-01. User: anubhav.arya789@gmail.com
+> Last updated: 2026-07-02. User: anubhav.arya789@gmail.com
+
+---
+
+## 🗓️ Session log — 2026-07-02 (TradingView MCP wired for real backtesting)
+
+**RESUME HERE. First real work: run the FVG backtest in TradingView, then verdict.**
+
+**WHY:** User wants EVERY algo proven in TradingView's Strategy Tester (deep intraday
+history) BEFORE it trades real money — "not in our dashboard, in TradingView, full
+proof." Correct discipline. Today STAR lost **-$165.15** (19 trades); FVG desk is the
+bleeder (-$207 all-time, 2 wins of 12) and was NEVER backtested before going live.
+
+**WHAT GOT DONE:**
+1. **`engine/fvg_strategy.pine`** — 1:1 Pine v5 port of `engine/fvg.py` (bullish-FVG
+   support long: gap `high[i-2]<low[i]`, entry on retest holding gap + EMA200 uptrend,
+   stop `glo*0.997`, 2R target, stop-before-target priority, entry at signal-bar close).
+   Committed locally (push to `main` BLOCKED — branch-protected, needs PR).
+2. **TradingView MCP discovered + wired into THIS CLI.** User had `tradingview` MCP
+   connected only on the **claude.ai desktop app** (78 tools) — NOT this Claude Code CLI
+   (separate surface). Found its config in
+   `~/Library/Application Support/Claude/claude_desktop_config.json`:
+   local stdio server `node /Users/anubhavarya/tradingview-mcp/src/server.js` (NO URL —
+   it drives the live TV browser/app via CDP). Added to CLI user scope:
+   `claude mcp add tradingview --scope user -- node /Users/anubhavarya/tradingview-mcp/src/server.js`
+   → written to `~/.claude.json`. **Persistent.**
+3. **Confirmed the server does the FULL loop** (inspected src): `pine_smart_compile`,
+   `ui_open_panel(strategy-tester|pine-editor)`, `data_get_strategy_results`,
+   `data_get_trades`, `data_get_equity`, chart_set_symbol/timeframe, tv_health_check.
+   No copy-paste needed — Claude can drive TV end-to-end once the tools load.
+
+**⚠️ BLOCKER (do FIRST next session):** the TV MCP was added mid-session, so the tools
+were NOT loaded in the session that added them. **On restart they auto-load.** Verify:
+ToolSearch `select:tv_health_check` should now resolve. Also **TV desktop app must be
+OPEN + logged in** (server drives the live app).
+
+**NEXT SESSION — run the FVG backtest (act, don't ask):**
+1. `tv_health_check` → confirm TV reachable.
+2. For each of NVDA, AAPL, MSFT, AMD, TSM: `chart_set_symbol` → daily timeframe →
+   open pine-editor → paste `engine/fvg_strategy.pine` → `pine_smart_compile` →
+   open strategy-tester → `data_get_strategy_results`.
+3. **VERDICT RULE (decided upfront, no moving goalposts):** Profit Factor > 1.3 over
+   30+ trades → FVG edge real, keep desk live, sync winning params to `engine/fvg.py`.
+   Below that → **retire the FVG desk permanently** (stop the -$207 leak).
+4. Then repeat the port→prove loop for the other live desks (scalp, stock).
+
+**Today's tape (2026-07-02):** rotation day — Dow +1.1%, S&P flat, Nasdaq -0.8%, VIX
+16.15. Tech bled, value bid. STAR by desk all-time: scalp +$21.43, stock -$25.53,
+fvg -$207.65 (the problem), gold $0.
 
 ---
 
