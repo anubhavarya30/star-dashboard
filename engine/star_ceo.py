@@ -88,6 +88,34 @@ def research(max_watch=6):
         world_narr = __import__("world_market").narrative(world) if world.get("regions") else ""
     except Exception:
         world_narr = ""
+
+    # --- FOCUS (2026-07-06): the two live strategies only --------------------------
+    # FVG for STOCKS, GEX for OPTIONS. Overnight research assigns each desk its plan.
+    fvg_stocks = []
+    try:
+        import fvg
+        for sym in ss.UNIVERSE:
+            try:
+                sig = fvg.signal(sym)
+                if isinstance(sig, dict) and sig.get("setup"):
+                    fvg_stocks.append({"symbol": sym, "entry": sig.get("entry"),
+                                       "stop": sig.get("stop"), "target": sig.get("target"),
+                                       "note": sig.get("note", "FVG support long")})
+            except Exception:
+                pass
+    except Exception:
+        pass
+    gex_options = {}
+    try:
+        import gex_desk
+        gsig = _agent("gex_setup", gex_desk._signal, default=None)
+        gex_options = {"symbol": "SPY", "regime": (gex or {}).get("regime"),
+                       "flip": (gex or {}).get("gamma_flip"), "spot": (gex or {}).get("spot"),
+                       "call_wall": (gex or {}).get("call_wall"), "put_wall": (gex or {}).get("put_wall"),
+                       "setup": gsig}
+    except Exception:
+        pass
+
     out = {"date": datetime.now().strftime("%Y-%m-%d"),
            "generated_at": datetime.now().astimezone().isoformat(),
            "regime": risk_level, "bias": bias,
@@ -103,6 +131,7 @@ def research(max_watch=6):
                                   "trigger": v.get("trigger"), "note": v.get("note")}
                               for k, v in reversal.items() if isinstance(v, dict)},
            "gappers": [g.get("symbol") for g in (gappers.get("top_watches") or [])] if isinstance(gappers, dict) else [],
+           "fvg_stocks": fvg_stocks, "gex_options": gex_options,
            "readiness": readiness()}
     _write(out)
     _telegram(out)
@@ -217,17 +246,31 @@ def _telegram(out):
         import telegram_alert
     except Exception:
         return
-    wl = out["watchlist"]
-    names = ", ".join(f"{w['symbol']}({w['score']})" for w in wl) or "none cleared the bar"
     rdy = "✅ IBKR ready" if out["readiness"].get("ready") else "⚠️ IBKR NOT ready"
-    rev_hot = [k for k, v in out["reversal_armed"].items() if v.get("trigger")]
-    msg = (f"🌅 <b>STAR Pre-Market Brief — {out['date']}</b>\n"
+    fvg = out.get("fvg_stocks", [])
+    gx = out.get("gex_options", {})
+    # FVG stock assignments
+    if fvg:
+        fvg_line = "\n".join(f"• <b>{s['symbol']}</b> entry ${s['entry']} · stop ${s['stop']} → tgt ${s['target']}"
+                             for s in fvg[:6])
+    else:
+        fvg_line = "• none set up — no forced trades"
+    # GEX options assignment
+    setup = (gx or {}).get("setup")
+    if setup:
+        gx_line = (f"• <b>{setup['dir']} SPY</b> ({setup.get('regime')} gamma) entry ${setup['entry']} · "
+                   f"stop ${setup['stop']} → tgt ${setup['target']} ({setup.get('rr')}R)")
+    elif gx:
+        gx_line = (f"• {gx.get('regime')} gamma, flip {gx.get('flip')}, walls "
+                   f"{gx.get('put_wall')}/{gx.get('call_wall')} — wait for stack+vol confirm")
+    else:
+        gx_line = "• GEX unavailable"
+    msg = (f"🌅 <b>STAR Overnight Brief — {out['date']}</b>\n"
            f"Regime: <b>{out['regime']}</b> · {rdy}\n"
-           f"<b>{len(wl)} long(s) armed:</b> {names}\n"
-           + (f"⚡ reversal TRIGGER: {', '.join(rev_hot)}\n" if rev_hot else
-              "⚡ TSM/AMD/ARM: watching\n")
-           + f"<i>{out['bias']}</i>\n"
-           f"Desk will take the entry at the open + manage to exit.")
+           f"<i>{out['bias']}</i>\n\n"
+           f"📊 <b>FVG — stocks ({len(fvg)}):</b>\n{fvg_line}\n\n"
+           f"🎯 <b>GEX — SPY options:</b>\n{gx_line}\n\n"
+           f"Focus: FVG stocks + GEX options only. Desks manage to exit.")
     telegram_alert.send(msg)
 
 
