@@ -128,6 +128,21 @@ def _gamma():
         return None
 
 
+def _net_greeks():
+    """Full net dealer greeks (delta/gamma/theta/vega) for the SPY chain — the greeks
+    ENVIRONMENT a signal fires in. Recorded on every entry so the scorecard can later
+    show which greeks regime the setup actually wins in. Returns {} on failure."""
+    try:
+        import greeks
+        g = greeks.net_exposure(SYMBOL)
+        if g.get("error"):
+            return {}
+        return {"net_delta": g["net_delta"], "net_gamma": g["net_gamma"],
+                "net_theta": g["net_theta"], "net_vega": g["net_vega"]}
+    except Exception:
+        return {}
+
+
 def _signal():
     """Step 6: the ONE setup. Returns a position dict or None."""
     g = _gamma()
@@ -175,8 +190,16 @@ def _signal():
     reward = abs(d["target"] - d["entry"])
     if risk <= 0 or reward / risk < MIN_RR:
         return None
+
+    # greeks environment + confirmation gate
+    ng = _net_greeks()
+    # backtest lesson: the SHORT leg bleeds unless dealer gamma is GENUINELY negative.
+    # Require the independent greeks engine to confirm net_gamma < 0 before shorting.
+    if d["dir"] == "SHORT" and ng and ng.get("net_gamma", 0) >= 0:
+        return None
     d["rr"] = round(reward / risk, 2)
     d["regime"] = regime
+    d["greeks_env"] = ng          # net Δ/Γ/Θ/V at entry — recorded for the scorecard
     return d
 
 
@@ -200,7 +223,8 @@ def maybe_enter():
             pass
     pos = {"symbol": SYMBOL, "dir": sig["dir"], "entry": entry, "stop": sig["stop"],
            "target": sig["target"], "shares": shares, "via": via, "rr": sig["rr"],
-           "regime": sig["regime"], "note": sig["note"], "opened_at": datetime.now().isoformat()}
+           "regime": sig["regime"], "greeks_env": sig.get("greeks_env"),
+           "note": sig["note"], "opened_at": datetime.now().isoformat()}
     s["open"].append(pos); _save(s)
     _log(f"GEX ENTRY[{via}] {sig['dir']} {SYMBOL} {shares}sh @ ${entry} stop ${sig['stop']} "
          f"target ${sig['target']} ({sig['rr']}R, {sig['regime']} gamma)")

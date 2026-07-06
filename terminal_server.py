@@ -462,6 +462,11 @@ class Handler(BaseHTTPRequestHandler):
                     import greeks
                     return greeks.agent(sy)
                 return self._send_json(cached("greeks_agent:" + sy, _grka, ttl=120))
+            if u.path == "/api/position_risk":
+                def _prisk():
+                    import position_risk
+                    return position_risk.portfolio()
+                return self._send_json(cached("position_risk", _prisk, ttl=30))
             if u.path == "/api/premarket":
                 if q.get("rebuild"):
                     def _pm():
