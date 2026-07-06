@@ -93,7 +93,25 @@ def price(sym):
         return None
 
 
+def _yf_bars(sym, count=120):
+    """yfinance 5m intraday bars (delayed ~15m). Reliable fallback now that Webull's
+    public charts endpoint only returns the latest bar. Returns {c,h,l,v} or None."""
+    try:
+        import yfinance as yf
+        df = yf.Ticker(sym).history(period="5d", interval="5m")
+        if df is None or len(df) < 30:
+            return None
+        df = df.tail(int(count))
+        return {"c": [float(x) for x in df["Close"]],
+                "h": [float(x) for x in df["High"]],
+                "l": [float(x) for x in df["Low"]],
+                "v": [float(x) for x in df["Volume"]]}
+    except Exception:
+        return None
+
+
 def bars_5m(sym, count=120):
+    # 1) Alpaca (free IEX realtime) if keyed
     try:
         import alpaca_data as a
         if a.configured():
@@ -102,7 +120,12 @@ def bars_5m(sym, count=120):
                 return b
     except Exception:
         pass
-    return _wb_bars(sym, count)   # yfinance bars handled by caller's batch fallback
+    # 2) Webull realtime bars (only usable if it ever returns >=30; currently caps at 1)
+    b = _wb_bars(sym, count)
+    if b and len(b.get("c", [])) >= 30:
+        return b
+    # 3) yfinance delayed fallback — always try so callers never get None
+    return _yf_bars(sym, count)
 
 
 def source():
