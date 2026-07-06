@@ -1,25 +1,25 @@
 {
-  "date": "2026-06-25",
-  "trades": 3,
-  "net": -16.04,
-  "cumulative": 64.87,
+  "date": "2026-07-06",
+  "trades": 4,
+  "net": 79.65,
+  "cumulative": 151.59,
   "by_source": {
     "stock": {
-      "trades": 3,
-      "wins": 0,
-      "pnl": -16.04
+      "trades": 4,
+      "wins": 4,
+      "pnl": 79.65
     }
   },
   "scoreboard": {
     "stock": {
-      "trades": 14,
-      "wins": 9,
-      "pnl": 64.87,
-      "win_rate": 64.3,
-      "avg_pnl": 4.63
+      "trades": 25,
+      "wins": 16,
+      "pnl": 151.59,
+      "win_rate": 64.0,
+      "avg_pnl": 6.06
     },
     "gold": {
-      "trades": 2,
+      "trades": 5,
       "wins": 0,
       "pnl": 0.0,
       "win_rate": 0.0,
@@ -27,15 +27,15 @@
     }
   },
   "best": {
-    "symbol": "V",
-    "pnl": 0.0
+    "symbol": "AMD",
+    "pnl": 41.74
   },
   "worst": {
-    "symbol": "TSM",
-    "pnl": -14.34
+    "symbol": "JPM",
+    "pnl": 1.73
   },
   "lessons": [
-    "\u274c stock lost $16.04 today (3 trades) \u2014 tighten entries / cut faster.",
-    "\ud83d\udcc8 Best proven edge: stock (+$4.63/trade over 14). Scale this one."
+    "\u2705 stock made +$79.65 today (4 trades) \u2014 keep running it.",
+    "\ud83d\udcc8 Best proven edge: stock (+$6.06/trade over 25). Scale this one."
   ]
 }
