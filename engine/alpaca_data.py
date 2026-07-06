@@ -60,7 +60,8 @@ def bars_5m(symbol, limit=80):
         bars = d.get("bars") or []
         return {"c": [float(b["c"]) for b in bars],
                 "h": [float(b["h"]) for b in bars],
-                "l": [float(b["l"]) for b in bars]}
+                "l": [float(b["l"]) for b in bars],
+                "v": [float(b.get("v", 0)) for b in bars]}
     except Exception:
         return None
 
