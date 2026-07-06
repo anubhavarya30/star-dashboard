@@ -450,6 +450,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(gex(q.get("sym", ["SPY"])[0].upper()))
             if u.path == "/api/gex_agent":
                 return self._send_json(gex_agent(q.get("sym", ["SPY"])[0].upper()))
+            if u.path == "/api/greeks":
+                sy = q.get("sym", ["SPY"])[0].upper()
+                def _grk():
+                    import greeks
+                    return greeks.net_exposure(sy)
+                return self._send_json(cached("greeks:" + sy, _grk, ttl=120))
+            if u.path == "/api/greeks_agent":
+                sy = q.get("sym", ["SPY"])[0].upper()
+                def _grka():
+                    import greeks
+                    return greeks.agent(sy)
+                return self._send_json(cached("greeks_agent:" + sy, _grka, ttl=120))
             if u.path == "/api/premarket":
                 if q.get("rebuild"):
                     def _pm():
