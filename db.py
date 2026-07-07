@@ -206,10 +206,17 @@ def star_pnl():
     rows = paper_trades_all(5000)
     today = datetime.date.today().isoformat()
     tot = {"date": today, "today_pnl": 0.0, "today_trades": 0, "all_pnl": 0.0,
-           "all_trades": 0, "all_wins": 0, "by_source": {}}
+           "all_trades": 0, "all_wins": 0, "by_source": {},
+           "retired": {"pnl": 0.0, "trades": 0}}
     for r in rows:
         pnl = float(r.get("pnl") or 0)
         src = r.get("source") or "stock"
+        # retired strategies (e.g. 'fvg_retired') are kept for history but EXCLUDED from
+        # the active STAR P&L — a dead strategy shouldn't drag the live desks' number.
+        if src.endswith("_retired"):
+            tot["retired"]["pnl"] = round(tot["retired"]["pnl"] + pnl, 2)
+            tot["retired"]["trades"] += 1
+            continue
         bs = tot["by_source"].setdefault(src, {"pnl": 0.0, "trades": 0, "wins": 0})
         bs["pnl"] = round(bs["pnl"] + pnl, 2); bs["trades"] += 1
         bs["wins"] += 1 if pnl > 0 else 0
