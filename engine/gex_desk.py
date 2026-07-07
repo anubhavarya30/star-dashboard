@@ -57,9 +57,11 @@ STOP_BUF_PCT = 0.0025   # stop sits 0.25% beyond the level we lean on
 VOL_MULT = 1.2          # volume confirmation: last 5m bar >= 1.2x its 20-bar average
 ENTRIES_ENABLED = True  # PAPER/scorecard forward-test LIVE 2026-07-07 (step 7): records
                         # SPY gamma+stack+volume setups on paper, exits on realtime price.
-                        # No real orders (execution is a later upgrade). Prove the gamma
-                        # edge live (can't backtest gamma — no options-OI history) before
-                        # wiring real Webull/IBKR options orders.
+                        # Prove the gamma edge live (can't backtest gamma — no options-OI
+                        # history) before wiring real orders.
+LIVE = False            # SIM scorecard: NO real broker orders. The desk trades SPY SHARES
+                        # as a directional proxy for the gamma signal; real OPTIONS execution
+                        # (Webull tickets / IBKR) is the next upgrade. Keep False until then.
 
 
 def _broker_ok():
@@ -216,7 +218,7 @@ def maybe_enter():
         return
     shares = max(1, int(NOTIONAL / sig["entry"]))
     entry, via = sig["entry"], "sim"
-    if ENTRIES_ENABLED and _broker_ok():
+    if ENTRIES_ENABLED and LIVE and _broker_ok():
         try:
             import ibkr_broker as b
             side = "BUY" if sig["dir"] == "LONG" else "SELL"
