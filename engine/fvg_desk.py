@@ -20,16 +20,18 @@ STATE = os.path.join(ROOT, "data", "fvg_state.json")
 MAX_OPEN = 3
 NOTIONAL = 1000.0      # $ per FVG swing (sizing)
 COOLDOWN = 86400       # one entry per name per day
-LIVE = True            # route through IBKR PAPER (real fills); sim-fallback if a fill fails
-# UNDER IMPROVEMENT 2026-07-02: baseline FVG has no edge yet. TradingView Strategy
-# Tester, NVDA daily, full 1999-2026, 408 trades ($1000-cash = live notional):
-# 23.5% win (96W/303L/9BE), avg loss -13.56% vs avg win +5.76%, PF ~0.13. The
-# asymmetry is BACKWARDS (losers bigger than winners) — the fix targets are the stop
-# (0.3% is too tight, whipsaws) and the 2R target (too far, only 23% hit). Iterating
-# in the Pine tester: tune stop/target/filters -> re-backtest -> re-verdict (PF>1.3
-# over 30+). Entries stay OFF until the improved params clear that bar. manage() runs
-# so open positions exit cleanly (no orphans).
-ENTRIES_ENABLED = False   # OFF until improved params prove PF>1.3 in TV. Do not flip on a hunch.
+LIVE = False           # SCORECARD mode: entries recorded at the v3 gap-top (sim), exits
+                       # managed on realtime price. v3's entry is a RESTING limit at the
+                       # gap top that fills hours later — true IBKR-paper resting-limit
+                       # orders need async fill tracking (the next upgrade). Forward-test
+                       # on paper first (same pattern as the GEX desk), then wire real orders.
+# V3 APPROVED + LIVE (paper scorecard) 2026-07-07: fvg.signal() synced to the
+# TradingView-proven v3 params — 1h bars, gap must form on >1.2x-avg volume + stacked
+# EMA (close>=EMA200 AND EMA50>EMA200), LIMIT entry at the gap top, stop below the gap,
+# 3R target. Cross-symbol basket (no re-tuning): AAPL PF 1.21, MSFT 1.48, AMD 1.53,
+# TSM 1.66 (4/5 clear PF>1.3), vs the dead daily/2R baseline (PF 0.13, -$207 live).
+# User approved after reviewing the TV Strategy Tester results.
+ENTRIES_ENABLED = True    # v3 proven in TV + approved. Paper scorecard forward-test is LIVE.
 
 
 def _broker_ok():
