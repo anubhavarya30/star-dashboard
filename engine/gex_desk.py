@@ -55,7 +55,11 @@ MIN_RR = 1.5            # skip setups worse than 1.5R
 NEAR_WALL_PCT = 0.0025  # "at" a wall = within 0.25% of it
 STOP_BUF_PCT = 0.0025   # stop sits 0.25% beyond the level we lean on
 VOL_MULT = 1.2          # volume confirmation: last 5m bar >= 1.2x its 20-bar average
-ENTRIES_ENABLED = False # PAPER/scorecard only (step 7). Prove the edge before real money.
+ENTRIES_ENABLED = True  # PAPER/scorecard forward-test LIVE 2026-07-07 (step 7): records
+                        # SPY gamma+stack+volume setups on paper, exits on realtime price.
+                        # No real orders (execution is a later upgrade). Prove the gamma
+                        # edge live (can't backtest gamma — no options-OI history) before
+                        # wiring real Webull/IBKR options orders.
 
 
 def _broker_ok():
