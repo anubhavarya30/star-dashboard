@@ -43,30 +43,37 @@ def _ema(v, n):
     return e
 
 
-def backtest(symbol, target_R=2.0, max_wait=15, htf_filter=True):
-    """Backtest the bullish-FVG-support long on 5y daily bars. Entry when a later bar
-    dips into a bullish FVG and closes back above its bottom (holds support); stop
-    below the gap; target = target_R * risk. Optional 200-EMA uptrend filter (HTF bias).
-    No look-ahead: outcome is scanned only on bars AFTER entry."""
+def backtest(symbol, target_R=3.0, max_wait=15, htf_filter=True, vol_mult=1.2):
+    """Backtest FVG v3 (matches engine/fvg_strategy.pine + live signal()): 1h intraday
+    bars, gap must form on above-avg volume, stacked-EMA uptrend (close>=EMA200 AND
+    EMA50>EMA200), LIMIT entry at the gap top, stop below the gap, 3R target. No
+    look-ahead: the outcome is scanned only on bars AFTER the entry fills."""
     import yfinance as yf
-    h = yf.Ticker(symbol).history(period="5y")
+    h = yf.Ticker(symbol).history(period="730d", interval="1h")
     if h is None or len(h) < 250:
         return {"symbol": symbol, "error": "not enough data"}
-    highs = list(h["High"]); lows = list(h["Low"]); closes = list(h["Close"])
+    highs = list(h["High"]); lows = list(h["Low"]); closes = list(h["Close"]); vols = list(h["Volume"])
     fvgs = find_fvgs(highs, lows, "bull")
     trades = []
     used_entry_bars = set()
     for g in fvgs:
         gi, glo, ghi = g["i"], g["lo"], g["hi"]
-        # look for a retest in the bars right after the gap forms
+        # quality: gap-forming bar must carry conviction volume
+        if vol_mult and gi >= 20:
+            vsma = statistics.mean(vols[gi - 20:gi]) or 0
+            if vsma and vols[gi] < vol_mult * vsma:
+                continue
+        # look for a retest that fills a LIMIT at the gap top (ghi)
         for j in range(gi + 1, min(gi + 1 + max_wait, len(closes) - 1)):
             if j in used_entry_bars:
                 continue
-            # retest: bar dips into the gap zone but closes back above the gap bottom
+            # limit at ghi fills if the bar trades down to/through the gap top
             if lows[j] <= ghi and closes[j] > glo:
-                if htf_filter and closes[j] < _ema(closes[:j + 1], 200):
-                    break  # only longs in an uptrend (HTF bias)
-                entry = closes[j]
+                # stacked-trend filter at the entry bar
+                if htf_filter and (closes[j] < _ema(closes[:j + 1], 200)
+                                   or _ema(closes[:j + 1], 50) <= _ema(closes[:j + 1], 200)):
+                    break
+                entry = ghi                       # LIMIT fill at the gap top
                 stop = round(glo * 0.997, 4)
                 risk = entry - stop
                 if risk <= 0:
@@ -113,31 +120,50 @@ def basket_backtest(symbols=None, target_R=2.0):
     return {"per_name": rows, "aggregate": agg}
 
 
-def signal(symbol, htf_filter=True):
-    """LIVE check: is `symbol` setting up a bullish-FVG-support long right now?
-    Returns entry/stop/target if the latest bar is holding a fresh bullish FVG."""
+def signal(symbol, htf_filter=True, target_R=3.0, vol_mult=1.2, max_wait=15):
+    """LIVE check (FVG v3 — TradingView-proven params, basket PF 1.2–1.66 across
+    NVDA/AAPL/MSFT/AMD/TSM): is `symbol` setting up a bullish-FVG-support long NOW?
+
+    v3 edge (synced from engine/fvg_strategy.pine, 2026-07-06):
+      • 1h intraday bars (daily overnight gaps blew through the stop — no edge)
+      • gap must form on ABOVE-AVG volume (>= vol_mult x 20-bar SMA) — quality filter
+      • STACKED uptrend: close >= EMA200 AND EMA50 > EMA200 (not just price>EMA200)
+      • entry = LIMIT at the GAP TOP (ghi) — tight risk, better fill than entering at close
+      • stop = gap bottom - 0.3%; target = entry + 3R
+    Returns a LIMIT order (order='limit', entry=gap top) for the desk to rest + cancel."""
     import yfinance as yf
-    h = yf.Ticker(symbol).history(period="1y")
+    h = yf.Ticker(symbol).history(period="60d", interval="1h")
     if h is None or len(h) < 210:
         return {"symbol": symbol, "setup": False, "error": "no data"}
-    highs = list(h["High"]); lows = list(h["Low"]); closes = list(h["Close"])
+    highs = list(h["High"]); lows = list(h["Low"]); closes = list(h["Close"]); vols = list(h["Volume"])
+    ema50 = _ema(closes, 50); ema200 = _ema(closes, 200)
     fvgs = find_fvgs(highs, lows, "bull")
     last = len(closes) - 1
     for g in reversed(fvgs):
-        if g["i"] < last - 15 or g["i"] >= last:
+        gi = g["i"]
+        if gi < last - max_wait or gi >= last:
             continue
         glo, ghi = g["lo"], g["hi"]
-        if lows[last] <= ghi and closes[last] > glo:      # current bar retesting + holding
-            if htf_filter and closes[last] < _ema(closes, 200):
+        # quality: the gap-forming bar must carry conviction volume
+        if vol_mult and gi >= 20:
+            vsma = statistics.mean(vols[gi - 20:gi]) or 0
+            if vsma and vols[gi] < vol_mult * vsma:
                 continue
-            entry = round(closes[last], 2); stop = round(glo * 0.997, 2)
+        # retest: current bar dips into the zone but holds above the gap bottom
+        if lows[last] <= ghi and closes[last] > glo:
+            # stacked-trend filter (HTF bias): price above EMA200 AND EMA50>EMA200
+            if htf_filter and (closes[last] < ema200 or ema50 <= ema200):
+                continue
+            entry = round(ghi, 2)                 # LIMIT at the gap top
+            stop = round(glo * 0.997, 2)
             risk = entry - stop
             if risk <= 0:
                 continue
-            return {"symbol": symbol, "setup": True, "entry": entry, "stop": stop,
-                    "target": round(entry + 2 * risk, 2), "rr": 2.0,
+            return {"symbol": symbol, "setup": True, "order": "limit",
+                    "entry": entry, "stop": stop,
+                    "target": round(entry + target_R * risk, 2), "rr": target_R,
                     "fvg_zone": [round(glo, 2), round(ghi, 2)],
-                    "note": "bullish FVG holding as support (uptrend)"}
+                    "note": "FVG v3: 1h gap + vol + stacked-EMA, limit @ gap top, 3R"}
     return {"symbol": symbol, "setup": False}
 
 
