@@ -25,6 +25,8 @@ sys.path.insert(0, ROOT)
 STATE = os.path.join(ROOT, "data", "scalp_state.json")
 
 LIVE = True             # IBKR PAPER (real fills); sim-fallback. NOTE: delayed data handicaps scalp timing until a real-time feed is added.
+ENTRIES_ENABLED = False  # FVG+GEX-ONLY FOCUS 2026-07-07 (user directive): scalp entries OFF,
+                         # manage() still runs so open positions exit clean (no orphans).
 MAX_OPEN = 4
 # Tuned 2026-06-27 via scalp_backtest sweep (60d/5m, 108 combos): best expectancy
 # was oversold 30 / turn 45 / target 2.0R / hold 120m → 56% win, +0.14R/trade.
@@ -160,6 +162,8 @@ def _price(sym):
 
 
 def maybe_enter():
+    if not ENTRIES_ENABLED:          # FVG+GEX-only focus: no new scalp entries
+        return
     s = _load()
     if len(s["open"]) >= MAX_OPEN:
         return

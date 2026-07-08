@@ -17,6 +17,8 @@ HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, ".."))
 LOG = "/tmp/star_paper.log"
+STOCK_ENTRIES_ENABLED = False  # FVG+GEX-ONLY FOCUS 2026-07-07 (user directive): stock desk
+                              # entries OFF, manage_open() still runs so positions exit clean.
 
 
 def _now_ct():
@@ -177,6 +179,8 @@ def manage_open(force_close=False):
 
 
 def maybe_enter():
+    if not STOCK_ENTRIES_ENABLED:     # FVG+GEX-only focus: no new stock entries
+        return
     import risk_manager as rm, star_score
     s = rm.status()
     if s["halted"]:
