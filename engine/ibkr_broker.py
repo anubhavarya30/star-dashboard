@@ -160,6 +160,26 @@ def place_option_spread(symbol, expiry, long_strike, short_strike, right, qty,
         ib.disconnect()
 
 
+def positions(client_id=91):
+    """Held positions as {SYMBOL: qty} from the connected account. Safe; never trades.
+    Used to detect when a resting limit order has actually filled."""
+    try:
+        ib = _connect(client_id=client_id)
+    except Exception:
+        return {}
+    try:
+        out = {}
+        for p in ib.positions():
+            try:
+                sym = p.contract.symbol.upper()
+                out[sym] = out.get(sym, 0.0) + float(p.position)
+            except Exception:
+                pass
+        return out
+    finally:
+        ib.disconnect()
+
+
 def fills():
     """Authoritative IBKR order/fill history from the connected account — proof of
     what actually executed (vs our own ledger)."""

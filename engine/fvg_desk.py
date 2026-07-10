@@ -20,11 +20,11 @@ STATE = os.path.join(ROOT, "data", "fvg_state.json")
 MAX_OPEN = 3
 NOTIONAL = 1000.0      # $ per FVG swing (sizing)
 COOLDOWN = 86400       # one entry per name per day
-LIVE = False           # SCORECARD mode: entries recorded at the v3 gap-top (sim), exits
-                       # managed on realtime price. v3's entry is a RESTING limit at the
-                       # gap top that fills hours later — true IBKR-paper resting-limit
-                       # orders need async fill tracking (the next upgrade). Forward-test
-                       # on paper first (same pattern as the GEX desk), then wire real orders.
+LIVE = True            # REAL IBKR PAPER orders 2026-07-10 (user approved): places a DAY
+                       # LIMIT at the v3 gap top; _reconcile_working() promotes it to an open
+                       # position once IBKR fills it (tracks the resting order). Sim-records
+                       # only if the broker is unreachable. This trades the PROVEN v3 edge
+                       # (gap-top fill), not a market fill.
 # V3 APPROVED + LIVE (paper scorecard) 2026-07-07: fvg.signal() synced to the
 # TradingView-proven v3 params — 1h bars, gap must form on >1.2x-avg volume + stacked
 # EMA (close>=EMA200 AND EMA50>EMA200), LIMIT entry at the gap top, stop below the gap,
@@ -44,9 +44,11 @@ def _broker_ok():
 
 def _load():
     try:
-        return json.load(open(STATE))
+        s = json.load(open(STATE))
     except Exception:
-        return {"open": [], "realized": 0.0, "trades": 0, "wins": 0, "last_alert": {}}
+        s = {"open": [], "realized": 0.0, "trades": 0, "wins": 0, "last_alert": {}}
+    s.setdefault("working", [])   # resting gap-top limit orders awaiting fill (LIVE mode)
+    return s
 
 
 def _save(s):
@@ -65,15 +67,15 @@ def _price(sym):
 def maybe_enter():
     import star_score as ss, fvg
     s = _load()
-    if len(s["open"]) >= MAX_OPEN:
+    if len(s["open"]) + len(s["working"]) >= MAX_OPEN:
         return
-    open_syms = {p["symbol"] for p in s["open"]}
+    busy = {p["symbol"] for p in s["open"]} | {w["symbol"] for w in s["working"]}
     now = time.time()
     can_trade = LIVE and _broker_ok()
     for sym in ss.UNIVERSE:
-        if len(s["open"]) >= MAX_OPEN:
+        if len(s["open"]) + len(s["working"]) >= MAX_OPEN:
             break
-        if sym in open_syms or now - s["last_alert"].get(sym, 0) < COOLDOWN:
+        if sym in busy or now - s["last_alert"].get(sym, 0) < COOLDOWN:
             continue
         try:
             sig = fvg.signal(sym)
@@ -81,21 +83,75 @@ def maybe_enter():
             continue
         if not sig.get("setup"):
             continue
-        shares = max(1, int(NOTIONAL / sig["entry"]))
-        entry, via = sig["entry"], "sim"
+        entry = round(float(sig["entry"]), 2)          # v3: gap-top LIMIT price
+        shares = max(1, int(NOTIONAL / entry))
         if can_trade:
+            # place a DAY LIMIT at the gap top — the v3 edge is the tight-risk fill AT the
+            # gap, not a market fill above it. Rests on IBKR; _reconcile_working() promotes
+            # it to an open position once IBKR reports the fill.
+            placed = False
             try:
                 import ibkr_broker as b
-                r = b.place_order(sym, shares, "BUY")
-                if r.get("filled") and r.get("avg_fill"):
-                    entry, via = round(float(r["avg_fill"]), 2), "ibkr"
+                r = b.place_order(sym, shares, "BUY", order_type="LMT", limit_price=entry)
+                if r.get("filled") and r.get("avg_fill"):      # filled inside the poll window
+                    s["open"].append({"symbol": sym, "entry": round(float(r["avg_fill"]), 2),
+                                      "stop": sig["stop"], "target": sig["target"], "shares": shares,
+                                      "via": "ibkr", "note": sig.get("note"),
+                                      "opened_at": datetime.now().isoformat()})
+                    _log(f"FVG FILL[ibkr] {sym} {shares}sh @ ${round(float(r['avg_fill']),2)} (immediate)")
+                    placed = True
+                elif r.get("ok"):                              # resting — track as working
+                    s["working"].append({"symbol": sym, "shares": shares, "entry": entry,
+                                         "stop": sig["stop"], "target": sig["target"],
+                                         "note": sig.get("note"), "placed_at": datetime.now().isoformat()})
+                    _log(f"FVG LIMIT[working] {sym} {shares}sh @ ${entry} (gap-top, resting) "
+                         f"stop ${sig['stop']} tgt ${sig['target']}")
+                    placed = True
             except Exception:
                 pass
-        pos = {"symbol": sym, "entry": entry, "stop": sig["stop"], "target": sig["target"],
-               "shares": shares, "via": via, "note": sig.get("note", "FVG support long"),
-               "opened_at": datetime.now().isoformat()}
-        s["open"].append(pos); s["last_alert"][sym] = now; open_syms.add(sym); _save(s)
-        _log(f"FVG ENTRY[{via}] {sym} {shares}sh @ ${entry} stop ${sig['stop']} target ${sig['target']}")
+            if not placed:
+                continue
+        else:
+            # SIM scorecard: record the fill at the gap top immediately
+            s["open"].append({"symbol": sym, "entry": entry, "stop": sig["stop"],
+                              "target": sig["target"], "shares": shares, "via": "sim",
+                              "note": sig.get("note"), "opened_at": datetime.now().isoformat()})
+            _log(f"FVG ENTRY[sim] {sym} {shares}sh @ ${entry} stop ${sig['stop']} tgt ${sig['target']}")
+        s["last_alert"][sym] = now; busy.add(sym); _save(s)
+
+
+def _reconcile_working():
+    """Promote resting gap-top limits that IBKR has FILLED to open positions; drop DAY
+    orders that expired unfilled. Fill = the symbol now held at the broker for >= our
+    shares (paper; a rare cross-desk same-symbol hold could false-promote — acceptable)."""
+    s = _load()
+    if not s["working"]:
+        return
+    held = {}
+    if LIVE:
+        try:
+            import ibkr_broker as b
+            held = b.positions()
+        except Exception:
+            held = {}
+    changed = False
+    for w in list(s["working"]):
+        if held.get(w["symbol"], 0) >= w["shares"]:
+            s["open"].append({"symbol": w["symbol"], "entry": w["entry"], "stop": w["stop"],
+                              "target": w["target"], "shares": w["shares"], "via": "ibkr",
+                              "note": w.get("note"), "opened_at": datetime.now().isoformat()})
+            s["working"].remove(w); changed = True
+            _log(f"FVG FILL[ibkr] {w['symbol']} {w['shares']}sh @ ${w['entry']} (limit filled)")
+        else:
+            try:
+                age = (datetime.now() - datetime.fromisoformat(w["placed_at"])).total_seconds()
+            except Exception:
+                age = 0
+            if age > 86400:                    # DAY order — expired unfilled after a session
+                s["working"].remove(w); changed = True
+                _log(f"FVG CANCEL {w['symbol']} resting limit expired unfilled")
+    if changed:
+        _save(s)
 
 
 def manage():
@@ -156,17 +212,20 @@ def tick():
     phase = ps._market_phase(ps._now_ct())
     if phase == "closed":
         return "market closed"
+    _reconcile_working()                       # promote filled gap-top limits / expire stale
     manage()
     if phase == "open" and ENTRIES_ENABLED:
         maybe_enter()
     s = _load()
     tag = "" if ENTRIES_ENABLED else " [BENCHED: manage-only]"
-    return f"fvg tick [{phase}]{tag} | open {len(s['open'])} | realized ${s['realized']} | {s['trades']} closed"
+    return (f"fvg tick [{phase}]{tag} | open {len(s['open'])} working {len(s['working'])} "
+            f"| realized ${s['realized']} | {s['trades']} closed")
 
 
 def stats():
     s = _load()
-    return {"open": s["open"], "realized": s["realized"], "trades": s["trades"],
+    return {"open": s["open"], "working": s.get("working", []),
+            "realized": s["realized"], "trades": s["trades"],
             "wins": s["wins"], "win_rate": round(s["wins"]/s["trades"]*100, 1) if s["trades"] else 0}
 
 
