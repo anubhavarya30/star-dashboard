@@ -72,6 +72,13 @@ def maybe_enter():
     busy = {p["symbol"] for p in s["open"]} | {w["symbol"] for w in s["working"]}
     now = time.time()
     can_trade = LIVE and _broker_ok()
+    held0 = {}                                     # baseline holdings (isolate OUR fill from other desks)
+    if can_trade:
+        try:
+            import ibkr_broker as b
+            held0 = b.positions()
+        except Exception:
+            held0 = {}
     for sym in ss.UNIVERSE:
         if len(s["open"]) + len(s["working"]) >= MAX_OPEN:
             break
@@ -103,6 +110,7 @@ def maybe_enter():
                 elif r.get("ok"):                              # resting — track as working
                     s["working"].append({"symbol": sym, "shares": shares, "entry": entry,
                                          "stop": sig["stop"], "target": sig["target"],
+                                         "held_base": held0.get(sym, 0),
                                          "note": sig.get("note"), "placed_at": datetime.now().isoformat()})
                     _log(f"FVG LIMIT[working] {sym} {shares}sh @ ${entry} (gap-top, resting) "
                          f"stop ${sig['stop']} tgt ${sig['target']}")
@@ -136,7 +144,8 @@ def _reconcile_working():
             held = {}
     changed = False
     for w in list(s["working"]):
-        if held.get(w["symbol"], 0) >= w["shares"]:
+        # filled only when OUR shares land ON TOP of the baseline (ignores other desks' holds)
+        if held.get(w["symbol"], 0) >= w.get("held_base", 0) + w["shares"]:
             s["open"].append({"symbol": w["symbol"], "entry": w["entry"], "stop": w["stop"],
                               "target": w["target"], "shares": w["shares"], "via": "ibkr",
                               "note": w.get("note"), "opened_at": datetime.now().isoformat()})
