@@ -1,0 +1,10 @@
+{
+  "symbol": "AMD",
+  "samples": 1229,
+  "traded": 489,
+  "oos_accuracy": 0.5378,
+  "profit_factor": 1.189,
+  "conf_gate": 0.58,
+  "verdict": "NO EDGE \u2014 do not trade",
+  "rule": "acc>0.55 AND pf>1.3"
+}
