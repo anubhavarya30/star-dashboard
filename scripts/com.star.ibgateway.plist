@@ -10,7 +10,8 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>__HOME__/ibc/gatewaystart.sh</string>
+    <string>__HOME__/ibc/gatewaystartmacos.sh</string>
+    <string>-inline</string>
   </array>
   <key>KeepAlive</key><true/>
   <key>RunAtLoad</key><true/>
