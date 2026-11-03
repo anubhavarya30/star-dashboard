@@ -1,0 +1,280 @@
+{
+  "created_by": "trader-scanner",
+  "created_at": "2026-11-03T21:30:22Z",
+  "mode": "daily",
+  "as_of": "2026-11-03 close",
+  "universe": 300,
+  "scanned": 88,
+  "failed": 0,
+  "source": "yahoo",
+  "filters": {
+    "min_price": 5.0,
+    "min_volume": 1000000
+  },
+  "note": "A scan is a list of charts that match a rule, not a list of stocks to buy.",
+  "hits": [
+    {
+      "symbol": "ALNY",
+      "setups": [
+        "oversold",
+        "oversold_bounce"
+      ],
+      "price": 159.89,
+      "close_date": "2026-11-03",
+      "rsi": 22.2,
+      "volume": 3756782
+    },
+    {
+      "symbol": "AME",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 248.58,
+      "close_date": "2026-11-03",
+      "rsi": 52.9,
+      "volume": 2093395
+    },
+    {
+      "symbol": "ADM",
+      "setups": [
+        "oversold"
+      ],
+      "price": 70.6,
+      "close_date": "2026-11-03",
+      "rsi": 23.5,
+      "volume": 7031357
+    },
+    {
+      "symbol": "A",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 175.46,
+      "close_date": "2026-11-03",
+      "rsi": 55.3,
+      "volume": 2118475
+    },
+    {
+      "symbol": "ALSN",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 118.92,
+      "close_date": "2026-11-03",
+      "rsi": 62.2,
+      "volume": 1958310
+    },
+    {
+      "symbol": "ADC",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 68.86,
+      "close_date": "2026-11-03",
+      "rsi": 56.9,
+      "volume": 2658521
+    },
+    {
+      "symbol": "AHR",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 54.93,
+      "close_date": "2026-11-03",
+      "rsi": 60.5,
+      "volume": 3193071
+    },
+    {
+      "symbol": "ADEA",
+      "setups": [
+        "oversold"
+      ],
+      "price": 17.86,
+      "close_date": "2026-11-03",
+      "rsi": 26.5,
+      "volume": 5963433
+    },
+    {
+      "symbol": "ALKS",
+      "setups": [
+        "breakout_20d",
+        "bull_flag"
+      ],
+      "price": 45.69,
+      "close_date": "2026-11-03",
+      "rsi": 61.8,
+      "volume": 2328578
+    },
+    {
+      "symbol": "ALGM",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 33.66,
+      "close_date": "2026-11-03",
+      "rsi": 48.9,
+      "volume": 2975495
+    },
+    {
+      "symbol": "ACM",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 66.25,
+      "close_date": "2026-11-03",
+      "rsi": 69.3,
+      "volume": 1353402
+    },
+    {
+      "symbol": "AM",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 20.94,
+      "close_date": "2026-11-03",
+      "rsi": 49.3,
+      "volume": 3634964
+    },
+    {
+      "symbol": "ACIW",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 58.43,
+      "close_date": "2026-11-03",
+      "rsi": 73.3,
+      "volume": 1072303
+    },
+    {
+      "symbol": "ACMR",
+      "setups": [
+        "oversold",
+        "oversold_bounce"
+      ],
+      "price": 45.33,
+      "close_date": "2026-11-03",
+      "rsi": 28.6,
+      "volume": 1316569
+    },
+    {
+      "symbol": "AHCO",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 6.28,
+      "close_date": "2026-11-03",
+      "rsi": 57.8,
+      "volume": 7537584
+    },
+    {
+      "symbol": "AESI",
+      "setups": [
+        "oversold"
+      ],
+      "price": 8.14,
+      "close_date": "2026-11-03",
+      "rsi": 27.8,
+      "volume": 5586985
+    },
+    {
+      "symbol": "ACB",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 5.16,
+      "close_date": "2026-11-03",
+      "rsi": 77.6,
+      "volume": 8695708
+    },
+    {
+      "symbol": "ALHC",
+      "setups": [
+        "oversold_bounce"
+      ],
+      "price": 7.39,
+      "close_date": "2026-11-03",
+      "rsi": 36.8,
+      "volume": 5627181
+    },
+    {
+      "symbol": "AMLX",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 29.2,
+      "close_date": "2026-11-03",
+      "rsi": 53.9,
+      "volume": 1202630
+    },
+    {
+      "symbol": "AMPL",
+      "setups": [
+        "bull_flag"
+      ],
+      "price": 16.84,
+      "close_date": "2026-11-03",
+      "rsi": 62.9,
+      "volume": 1986474
+    },
+    {
+      "symbol": "AMPX",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 8.83,
+      "close_date": "2026-11-03",
+      "rsi": 50.3,
+      "volume": 3626819
+    },
+    {
+      "symbol": "ABSI",
+      "setups": [
+        "reclaim_ma20"
+      ],
+      "price": 10.0,
+      "close_date": "2026-11-03",
+      "rsi": 50.6,
+      "volume": 2710346
+    },
+    {
+      "symbol": "ADTN",
+      "setups": [
+        "oversold"
+      ],
+      "price": 5.06,
+      "close_date": "2026-11-03",
+      "rsi": 25.0,
+      "volume": 4389037
+    },
+    {
+      "symbol": "ADAM",
+      "setups": [
+        "oversold"
+      ],
+      "price": 5.73,
+      "close_date": "2026-11-03",
+      "rsi": 17.7,
+      "volume": 2194360
+    },
+    {
+      "symbol": "AEVA",
+      "setups": [
+        "oversold_bounce"
+      ],
+      "price": 8.94,
+      "close_date": "2026-11-03",
+      "rsi": 31.0,
+      "volume": 1364486
+    },
+    {
+      "symbol": "AHRT",
+      "setups": [
+        "breakout_20d"
+      ],
+      "price": 6.6,
+      "close_date": "2026-11-03",
+      "rsi": 68.6,
+      "volume": 1845511
+    }
+  ]
+}

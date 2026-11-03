@@ -5,6 +5,15 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-03 (FVG v3 cross-symbol TV backtest — RUN)
+`engine/fvg_strategy.pine` v3, 1h, Jan 2015–Nov 2026, $1k/trade, 0 commission, 5-tick slip, NO re-tuning:
+AMD PF 1.506 (247 tr, +$2,029) · NVDA 1.023 (256, +$118) · AAPL 1.184 (218, +$343) ·
+MSFT 1.46 (212, +$638) · TSM 1.616 (226, +$1,488). Basket +$4,616 / 1,159 trades ≈ +$4/trade.
+VERDICT: MIXED, not a clean pass — 3/5 > 1.3, the tuning name (NVDA) ~breakeven, AMD & MSFT
+curves lean on single outlier trades, commission not modeled. Do NOT sync to engine/fvg.py yet.
+TV MCP note: `data_get_strategy_results`/`data_get_trades` return empty ("No strategy found");
+read results from `capture_screenshot region=strategy_tester`. TV must be launched via `tv_launch kill_existing=true`.
+
 ## 🗓️ Session log — 2026-07-02 (TradingView MCP wired for real backtesting)
 
 **RESUME HERE. First real work: run the FVG backtest in TradingView, then verdict.**
