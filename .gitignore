@@ -55,3 +55,6 @@ data/realtime_status.json
 
 # Alpaca keys (NEVER commit)
 data/alpaca_config.json
+
+# Local Netlify folder
+.netlify
