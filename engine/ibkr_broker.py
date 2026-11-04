@@ -127,6 +127,42 @@ def place_future_order(root, exchange, qty, action, ref_price, slip=0.003, tick=
         ib.disconnect()
 
 
+def place_crypto_order(symbol, qty, action, ref_price, slip=0.003):
+    """Crypto (PAXOS) order on a verified paper (DU) account only. IBKR requires
+    tif IOC/Minutes for crypto; marketable limit off ref_price. Long-only venue."""
+    from ib_async import Crypto, LimitOrder
+    ib = _connect(client_id=93)
+    try:
+        accts = ib.managedAccounts()
+        acct = accts[0] if accts else ""
+        if not acct.upper().startswith("DU"):
+            return {"ok": False, "blocked": True, "account": acct,
+                    "error": f"SAFETY GATE: refusing to trade non-paper account '{acct}'."}
+        c = ib.qualifyContracts(Crypto(symbol.upper(), "PAXOS", "USD"))
+        if not c:
+            return {"ok": False, "error": f"cannot resolve crypto {symbol}"}
+        # No crypto market-data sub on this account: IOC LIMITs never fill, MARKET
+        # orders do (fill lands ~5-10s later). BUY by cash amount, SELL by quantity.
+        from ib_async import Order
+        if action.upper() == "BUY":
+            order = Order(action="BUY", orderType="MKT", totalQuantity=0,
+                          cashQty=round(float(qty) * ref_price, 2), tif="IOC")
+        else:
+            order = Order(action="SELL", orderType="MKT", totalQuantity=float(qty), tif="IOC")
+        px = None
+        trade = ib.placeOrder(c[0], order)
+        for _ in range(10):
+            ib.sleep(2)
+            if trade.orderStatus.status in ("Filled", "Cancelled", "ApiCancelled", "Inactive"):
+                break
+        return {"ok": trade.orderStatus.status == "Filled", "account": acct,
+                "symbol": symbol.upper(), "action": action.upper(), "qty": float(qty),
+                "status": trade.orderStatus.status, "filled": trade.orderStatus.filled,
+                "avg_fill": trade.orderStatus.avgFillPrice, "limit": px}
+    finally:
+        ib.disconnect()
+
+
 def place_option_order(symbol, expiry, strike, right, qty, limit_price, action="BUY"):
     """Place an OPTION order on a verified paper (DU) account. Same safety gate.
     expiry 'YYYY-MM-DD', right 'C'/'P', limit_price from the option chain (we have
