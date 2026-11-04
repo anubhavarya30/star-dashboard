@@ -5,6 +5,16 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-04 (day-trader-skill ORB tested in TradingView — FAILED)
+`engine/orb_strategy.pine` = 1:1 port of the day-trader skill defaults (15-min opening range,
+first 5m close above OR high 9:50-15:30, stop OR-mid, 2R target, flat 15:55, long only).
+TV 5m, Oct 27 2025–Nov 4 2026, $1k/trade, 0 commission, 5-tick slip, NO tuning:
+NVDA PF 0.889 (148 tr, -$68) · AAPL 1.023 (138, +$11) · MSFT 0.955 (142, -$12) ·
+AMD 0.963 (154, -$28) · TSM 0.819 (149, -$103). Basket -$200 / 731 trades. 0/5 > 1.3.
+VERDICT: FAIL (bar was PF>1.3) — NOT ported to STAR. Skill scanner/entry still usable as tools,
+not as an edge. TV note: TV needs launching with --remote-debugging-port=9222 (tv_launch
+kill_existing sometimes relaunches WITHOUT the flag); "Add to chart" = button at ~(1520,79).
+
 ## 🗓️ Session log — 2026-11-04 (IBKR = IB Gateway via IBC, port 4002)
 STAR now connects to **IB Gateway 10.50 on port 4002** (all IBKR defaults changed 7497→4002,
 override with env STAR_IBKR_PORT). IBC autologin works (pw from Keychain `star-ibkr-paper`).

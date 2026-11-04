@@ -1,0 +1,62 @@
+//@version=5
+// =============================================================================
+// STAR — Opening-Range Breakout (ORB) · 1:1 port of the day-trader skill pack
+// (trader-scanner orb + trader-entry + trader-exit defaults). Strategy Tester.
+// -----------------------------------------------------------------------------
+// RULES (skill defaults, NOT tuned):
+//   Opening range  = high/low of the 9:30, 9:35, 9:40 5-min bars (NY time)
+//   Entry          = first completed bar after the range that CLOSES above the
+//                    range high, bar closing 9:50..15:30; fill at that close
+//   Stop           = opening-range midpoint, rounded DOWN to the cent
+//   Target         = entry + 2R (R = entry - stop), rounded to the cent
+//   Flat by        = 15:55 (close of the 15:50 bar), no overnight hold
+//   Refuse         = risk < 0.05% of price; one trade per symbol per day; long only
+// RUN ON A 5-MINUTE CHART, regular session only.
+// VERDICT BAR (set before testing): PF > 1.3 over 30+ trades on the 5-name
+// basket (NVDA AAPL MSFT AMD TSM) -> port to STAR; otherwise do NOT.
+// Known TV limit: when one bar touches stop AND target, TV's intrabar path
+// decides; the skill counts that as the stop (so TV can be slightly kinder).
+// =============================================================================
+strategy("STAR ORB (day-trader skill) v1", overlay=true, initial_capital=100000,
+     default_qty_type=strategy.cash, default_qty_value=1000,
+     commission_type=strategy.commission.percent, commission_value=0.0,
+     slippage=5, pyramiding=0, calc_on_every_tick=false,
+     process_orders_on_close=true)
+
+targetR = input.float(2.0, "Target R", step=0.5)
+minRisk = input.float(0.0005, "Min risk as fraction of price", step=0.0001)
+tz = "America/New_York"
+
+inOR    = not na(time(timeframe.period, "0930-0945", tz))   // bars opening 9:30/9:35/9:40
+inEntry = not na(time(timeframe.period, "0945-1530", tz))   // bars closing 9:50..15:30
+flatBar = not na(time(timeframe.period, "1550-1555", tz))   // the 15:50 bar closes at 15:55
+
+var float orH = na
+var float orL = na
+var bool  done = true   // true = no more entries today
+
+if inOR and not inOR[1]          // first bar of a new session's range
+    orH := high
+    orL := low
+    done := false
+else if inOR
+    orH := math.max(orH, high)
+    orL := math.min(orL, low)
+
+var float tgt = na
+var float stp = na
+if inEntry and not done and not na(orH) and close > orH and strategy.position_size == 0
+    done := true                 // first close above the range is THE trigger
+    mid = (orH + orL) / 2
+    stp := math.floor(mid * 100) / 100
+    rk = close - stp
+    if rk > minRisk * close
+        tgt := math.round((close + targetR * rk) * 100) / 100
+        strategy.entry("ORB", strategy.long)
+        strategy.exit("ORB-x", from_entry="ORB", stop=stp, limit=tgt)
+
+if flatBar and strategy.position_size > 0
+    strategy.close_all(comment="flat 15:55")
+
+plot(inOR or inEntry ? orH : na, "OR high", color=color.new(color.teal, 0), style=plot.style_linebr)
+plot(inOR or inEntry ? orL : na, "OR low", color=color.new(color.red, 40), style=plot.style_linebr)
