@@ -158,7 +158,7 @@ class IBKRDataProvider:
 
     def __init__(self):
         self.ib_host = os.getenv("IBKR_HOST", "127.0.0.1")
-        self.ib_port = int(os.getenv("IBKR_PORT", "4002"))
+        self.ib_port = int(os.getenv("IBKR_PORT", "7497"))
         self.ib_client_id = int(os.getenv("IBKR_CLIENT_ID", "1"))
 
     def connect(self):

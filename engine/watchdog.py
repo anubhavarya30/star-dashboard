@@ -103,7 +103,7 @@ def _fresh_broker_status():
 def check_ibkr():
     d = _fresh_broker_status()
     if not d.get("connected"):
-        return False, f"IBKR DISCONNECTED — {d.get('error', 'no connection')} (relaunch TWS/Gateway, log into PAPER, API 4002)"
+        return False, f"IBKR DISCONNECTED — {d.get('error', 'no connection')} (relaunch TWS/Gateway, log into PAPER on 7497)"
     if not d.get("can_auto_trade"):
         return False, f"IBKR connected but auto-trade OFF (account {d.get('account')}, type {d.get('type')})"
     # Broker IS reachable. If terminal_server's own IBKR view is wedged, self-heal it.

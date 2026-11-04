@@ -19,7 +19,7 @@ import random
 from datetime import datetime, timezone
 from pathlib import Path
 
-HOST, PORT = "127.0.0.1", int(os.environ.get("STAR_IBKR_PORT", "4002"))  # IB Gateway paper
+HOST, PORT = "127.0.0.1", int(os.environ.get("STAR_IBKR_PORT", "7497"))  # TWS paper
 ORDERS_LOG = Path(__file__).parent.parent / "orders_log.json"   # repo root
 
 # ---------------- HARD CAPS ----------------

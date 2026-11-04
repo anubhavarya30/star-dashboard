@@ -16,7 +16,7 @@ import os
 
 # Works with TWS (paper 7497) or IB Gateway. We tell IBC to expose Gateway on
 # 7497 too (OverrideTwsApiPort), so no change is needed — but allow an override.
-PORT = int(os.environ.get("STAR_IBKR_PORT", "4002"))
+PORT = int(os.environ.get("STAR_IBKR_PORT", "7497"))
 HOST = os.environ.get("STAR_IBKR_HOST", "127.0.0.1")
 
 
@@ -33,7 +33,7 @@ def status(client_id=88):
         ib = _connect(client_id=client_id)
     except Exception as e:
         return {"connected": False, "error": f"{type(e).__name__}: {e}",
-                "hint": "Start TWS and enable API on port 4002 (IB Gateway paper)."}
+                "hint": "Start TWS and enable API on port 7497."}
     try:
         accts = ib.managedAccounts()
         acct = accts[0] if accts else None

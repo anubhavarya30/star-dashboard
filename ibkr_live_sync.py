@@ -17,7 +17,7 @@ from pathlib import Path
 
 OUT = Path(__file__).parent / "live_account.json"
 HOST = "127.0.0.1"
-PORT = int(os.environ.get("STAR_IBKR_PORT", "4002"))  # IB Gateway paper
+PORT = int(os.environ.get("STAR_IBKR_PORT", "7497"))  # TWS paper
 
 # Tags we care about from the account summary (all USD)
 WANT = {
