@@ -4,6 +4,7 @@ IBKR Connector - Proper async handling
 Syncs IBKR trades to STAR system
 """
 import asyncio
+import os
 import json
 from pathlib import Path
 from datetime import datetime
@@ -23,7 +24,7 @@ async def sync_ibkr_to_star():
         print("📡 Connecting to IBKR at 127.0.0.1:7497...")
         import random
         client_id = random.randint(100, 999)
-        await ib.connectAsync('127.0.0.1', 7497, clientId=client_id)
+        await ib.connectAsync('127.0.0.1', int(os.environ.get('STAR_IBKR_PORT', '4002')), clientId=client_id)
 
         print("✅ Connected to IBKR\n")
 

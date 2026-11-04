@@ -21,7 +21,7 @@ class IBKRLiveTrader:
 
     def __init__(self):
         self.host = os.getenv("IBKR_HOST", "127.0.0.1")
-        self.port = int(os.getenv("IBKR_PORT", "7497"))
+        self.port = int(os.getenv("IBKR_PORT", "4002"))
         self.client_id = int(os.getenv("IBKR_CLIENT_ID", "1"))
         self.ib = None
         self.is_connected = False

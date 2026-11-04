@@ -15,7 +15,7 @@ ROOT = os.path.join(HERE, "..")
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, ".."))
 STATE = os.path.join(ROOT, "data", "realtime_status.json")
-PORT = int(os.environ.get("STAR_IBKR_PORT", "7497"))
+PORT = int(os.environ.get("STAR_IBKR_PORT", "4002"))
 
 
 def probe():

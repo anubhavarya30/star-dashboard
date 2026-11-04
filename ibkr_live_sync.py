@@ -10,13 +10,14 @@ No seeded data. No fake balances. If TWS is down, it writes a clear error
 status instead of pretending.
 """
 import json
+import os
 import random
 from datetime import datetime, timezone
 from pathlib import Path
 
 OUT = Path(__file__).parent / "live_account.json"
 HOST = "127.0.0.1"
-PORT = 7497
+PORT = int(os.environ.get("STAR_IBKR_PORT", "4002"))  # IB Gateway paper
 
 # Tags we care about from the account summary (all USD)
 WANT = {

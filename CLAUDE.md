@@ -5,6 +5,15 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-04 (IBKR = IB Gateway via IBC, port 4002)
+STAR now connects to **IB Gateway 10.50 on port 4002** (all IBKR defaults changed 7497→4002,
+override with env STAR_IBKR_PORT). IBC autologin works (pw from Keychain `star-ibkr-paper`).
+IBC settings OverrideTwsApiPort/ReadOnlyApi/AutoRestartTime DISABLED in ~/ibc/config.ini —
+on Gateway 10.50 they hang the config dialog and freeze the Configure menu.
+ExistingSessionDetectedAction=secondary (user's manual login wins). Offline TWS 10.51 + IBC
+hung at "Initializing managers" every time — abandoned (job file ~/ibc/com.star.tws.plist.disabled).
+Same username can't be in TWS and Gateway at once — user to add a 2nd IBKR user for TWS.
+
 ## 🗓️ Session log — 2026-11-03 (FVG v3 cross-symbol TV backtest — RUN)
 `engine/fvg_strategy.pine` v3, 1h, Jan 2015–Nov 2026, $1k/trade, 0 commission, 5-tick slip, NO re-tuning:
 AMD PF 1.506 (247 tr, +$2,029) · NVDA 1.023 (256, +$118) · AAPL 1.184 (218, +$343) ·
