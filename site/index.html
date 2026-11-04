@@ -3,48 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>STAR Trading | Live paper-trading results</title>
-<meta name="description" content="Live, unedited results from STAR, an autonomous paper-trading system.">
+<title>STAR Trading | Tools &amp; research by Anubhav Arya</title>
+<meta name="description" content="STAR is an autonomous trading research platform: scanners, backtesting, options analytics, risk gates and broker execution, built by Anubhav Arya.">
+<meta property="og:title" content="STAR Trading: the tools and research behind an autonomous trading desk">
+<meta property="og:url" content="https://trade.buildbystar.com/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M16 6l2.6 6.6 7 .4-5.4 4.5 1.8 6.9L16 20.6l-6 3.8 1.8-6.9L6.4 13l7-.4z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#fff; --soft:#F6F7FB; --ink:#0F172A; --ink2:#475569; --ink3:#94A3B8; --line:#E2E8F0;
-          --brand:#4F46E5; --up:#047857; --down:#B91C1C; }
+  :root { --bg:#fff; --soft:#F6F7FB; --ink:#0F172A; --ink2:#475569; --ink3:#94A3B8; --line:#E2E8F0; --brand:#4F46E5; --brand-soft:#EEF2FF; }
   * { box-sizing:border-box; margin:0; }
   [hidden] { display:none !important; }
-  body { font-family:"Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--soft); }
+  body { font-family:"Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--soft); line-height:1.55; }
+  a { color:inherit; }
   .wrap { display:grid; grid-template-columns:280px 1fr; min-height:100vh; }
-  aside { background:var(--bg); border-right:1px solid var(--line); padding:32px 24px; display:flex; flex-direction:column; gap:24px; }
-  .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:20px; color:var(--ink); text-decoration:none; }
+  aside { background:var(--bg); border-right:1px solid var(--line); padding:32px 24px; display:flex; flex-direction:column; gap:22px; position:sticky; top:0; height:100vh; }
+  .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:20px; text-decoration:none; }
   .logo span { width:32px; height:32px; border-radius:8px; background:var(--brand); display:grid; place-items:center; color:#fff; }
-  .who h2 { font-size:16px; } .who p { color:var(--ink2); font-size:14px; line-height:1.5; margin-top:6px; }
+  .who h2 { font-size:16px; } .who p { color:var(--ink2); font-size:14px; margin-top:6px; }
+  nav { display:flex; flex-direction:column; gap:2px; }
+  nav a { text-decoration:none; color:var(--ink2); font-size:14px; font-weight:600; padding:8px 10px; border-radius:8px; }
+  nav a:hover { background:var(--soft); color:var(--ink); }
   .btn { display:block; text-align:center; padding:12px 16px; border-radius:10px; font-weight:700; font-size:14px; text-decoration:none; }
   .btn.primary { background:var(--brand); color:#fff; } .btn.primary:hover { background:#4338CA; }
-  .btn.ghost { border:1px solid var(--line); color:var(--ink); } .btn.ghost:hover { background:var(--soft); }
-  .btn:focus-visible { outline:3px solid #A5B4FC; outline-offset:2px; }
-  .note { margin-top:auto; font-size:12px; color:var(--ink3); line-height:1.5; }
-  main { padding:40px; max-width:1040px; width:100%; }
-  h1 { font-size:28px; font-weight:800; } .sub { color:var(--ink2); margin-top:6px; }
-  .badge { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; background:#EEF2FF; color:var(--brand); margin-left:8px; vertical-align:middle; }
-  .dot { width:8px; height:8px; border-radius:50%; background:var(--ink3); } .dot.live { background:#10B981; }
-  .tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:28px 0; }
-  .tile { background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:18px; }
-  .tile .k { font-size:13px; color:var(--ink2); font-weight:600; } .tile .v { font-size:26px; font-weight:800; margin-top:6px; font-variant-numeric:tabular-nums; }
-  .card { background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
-  .card h3 { font-size:15px; margin-bottom:14px; }
-  .bars { display:flex; align-items:center; gap:3px; height:140px; position:relative; }
-  .bars::after { content:""; position:absolute; left:0; right:0; top:50%; border-top:1px solid var(--line); }
-  .bar { flex:1; display:flex; flex-direction:column; height:100%; }
-  .half { height:50%; display:flex; flex-direction:column; }
-  .bar i { display:block; width:100%; min-height:1px; border-radius:2px; }
-  table { width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }
-  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); } th { color:var(--ink2); font-weight:600; font-size:13px; }
-  td.r, th.r { text-align:right; }
-  .up { color:var(--up); } .down { color:var(--down); }
-  .err { color:var(--ink2); padding:24px; text-align:center; }
-  @media (max-width:860px) { .wrap { grid-template-columns:1fr; } aside { border-right:0; border-bottom:1px solid var(--line); } .tiles { grid-template-columns:repeat(2,1fr); } main { padding:24px; } }
+  .btn.ghost { border:1px solid var(--line); } .btn.ghost:hover { background:var(--soft); }
+  a:focus-visible, .btn:focus-visible { outline:3px solid #A5B4FC; outline-offset:2px; }
+  .note { margin-top:auto; font-size:12px; color:var(--ink3); }
+  main { padding:48px 40px 64px; max-width:1080px; width:100%; }
+  section { margin-bottom:56px; scroll-margin-top:24px; }
+  .eyebrow { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--brand); }
+  h1 { font-size:40px; line-height:1.15; font-weight:800; margin-top:10px; max-width:760px; }
+  .lead { color:var(--ink2); font-size:18px; margin-top:14px; max-width:720px; }
+  h2.s { font-size:24px; font-weight:800; margin:6px 0 8px; } .sdesc { color:var(--ink2); max-width:720px; margin-bottom:22px; }
+  .stats { display:flex; gap:28px; flex-wrap:wrap; margin-top:28px; }
+  .stats div b { display:block; font-size:28px; font-weight:800; } .stats div span { color:var(--ink2); font-size:13px; font-weight:600; }
+  .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .step { background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .step b { display:block; font-size:14px; } .step span { font-size:13px; color:var(--ink2); }
+  .step .n { width:26px; height:26px; border-radius:50%; background:var(--brand-soft); color:var(--brand); font-weight:800; font-size:13px; display:grid; place-items:center; margin-bottom:10px; }
+  .group { margin-bottom:28px; } .group h3 { font-size:15px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .card { background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .card h4 { font-size:15px; } .card p { font-size:13.5px; color:var(--ink2); margin-top:6px; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; color:var(--brand); background:var(--brand-soft); padding:2px 8px; border-radius:999px; margin-top:10px; }
+  .study { background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:22px; margin-bottom:14px; }
+  .study h4 { font-size:17px; } .study .q { color:var(--ink2); font-size:14px; margin:6px 0 12px; }
+  .study ul { padding-left:18px; font-size:14px; color:var(--ink2); } .study li { margin:4px 0; } .study li b { color:var(--ink); }
+  .principles { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; } .chips span { background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; }
+  @media (max-width:960px) { .wrap { grid-template-columns:1fr; } aside { position:static; height:auto; border-right:0; border-bottom:1px solid var(--line); } .grid, .flow { grid-template-columns:1fr 1fr; } .principles { grid-template-columns:1fr; } main { padding:28px 20px; } h1 { font-size:30px; } }
+  @media (max-width:560px) { .grid, .flow { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -53,60 +62,151 @@
     <a class="logo" href="https://buildbystar.com/"><span>★</span>STAR</a>
     <div class="who">
       <h2>Built by Anubhav Arya</h2>
-      <p>STAR is an autonomous trading system I designed and built: market scanners, risk gates, broker execution and this live scorecard.</p>
+      <p>I designed and built STAR end to end: data pipelines, strategy research, risk controls and broker execution.</p>
     </div>
-    <!-- PROFILE_URL: replace with the real resume / personal-site link -->
+    <nav aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#tools">The toolkit</a>
+      <a href="#research">Research</a>
+      <a href="#principles">Principles</a>
+      <a href="#stack">Tech stack</a>
+    </nav>
+    <!-- PROFILE_URL: set the real resume / personal-site link, then remove `hidden` -->
     <a class="btn primary" id="profile" href="#" target="_blank" rel="noopener" hidden>View my profile</a>
     <a class="btn ghost" href="https://buildbystar.com/">buildbystar.com</a>
-    <p class="note">Paper trading (simulated money) on Interactive Brokers. Numbers come straight from the trade log, losses included. Not investment advice.</p>
+    <p class="note">STAR runs on a paper (simulated) account. Nothing here is investment advice.</p>
   </aside>
+
   <main>
-    <h1>Live results <span class="badge"><span class="dot" id="dot"></span><span id="status">Connecting…</span></span></h1>
-    <p class="sub" id="asof">Results from STAR's own trade ledger, updated every 30 seconds.</p>
-    <div class="tiles">
-      <div class="tile"><div class="k">All-time P&amp;L</div><div class="v" id="all">—</div></div>
-      <div class="tile"><div class="k">Today</div><div class="v" id="today">—</div></div>
-      <div class="tile"><div class="k">Closed trades</div><div class="v" id="trades">—</div></div>
-      <div class="tile"><div class="k">Win rate</div><div class="v" id="wr">—</div></div>
-    </div>
-    <div class="card"><h3>Daily P&amp;L, last 30 trading days</h3><div class="bars" id="bars" role="img" aria-label="Daily profit and loss bar chart"></div></div>
-    <div class="card"><h3>By strategy desk</h3>
-      <table><thead><tr><th>Desk</th><th class="r">Trades</th><th class="r">Win rate</th><th class="r">P&amp;L</th></tr></thead><tbody id="desks"></tbody></table>
-    </div>
+    <section>
+      <div class="eyebrow">Autonomous trading research platform</div>
+      <h1>STAR scans the market, tests every idea against history, and only trades what survives.</h1>
+      <p class="lead">One system runs the full desk: a CEO agent coordinates scanners, strategy engines, options analytics and a hard risk gate, then executes through Interactive Brokers, around the clock.</p>
+      <div class="stats">
+        <div><b>60+</b><span>engine modules</span></div>
+        <div><b>6</b><span>strategy desks</span></div>
+        <div><b>24/7</b><span>self-healing operation</span></div>
+        <div><b>11 yrs</b><span>of intraday backtests</span></div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="eyebrow">Architecture</div>
+      <h2 class="s">How a trade gets made</h2>
+      <p class="sdesc">Every idea passes the same pipeline. Any stage can say no.</p>
+      <div class="flow">
+        <div class="step"><div class="n">1</div><b>Scout</b><span>Premarket gaps, runners, breakdowns, news and overnight world markets.</span></div>
+        <div class="step"><div class="n">2</div><b>Score</b><span>9-vote technical score, FVG structure, gamma regime, ML consensus.</span></div>
+        <div class="step"><div class="n">3</div><b>Validate</b><span>Backtest and walk-forward tests, earnings and holiday guards.</span></div>
+        <div class="step"><div class="n">4</div><b>Risk gate</b><span>Position sizing, daily loss limit, open-risk budget, minimum reward-to-risk.</span></div>
+        <div class="step"><div class="n">5</div><b>Execute &amp; manage</b><span>IBKR orders, breakeven at +1R, scale-outs, trailing stops, phone alerts.</span></div>
+      </div>
+    </section>
+
+    <section id="tools">
+      <div class="eyebrow">The toolkit</div>
+      <h2 class="s">Tools I built</h2>
+      <p class="sdesc">Each one is a standalone engine module the CEO agent can call.</p>
+
+      <div class="group"><h3>Market intelligence</h3><div class="grid">
+        <div class="card"><h4>Market Scout</h4><p>Looks across the whole market, then shortlists a few solid candidates for the day.</p><span class="tag">scout.py</span></div>
+        <div class="card"><h4>Premarket Gap &amp; Catalyst Scanner</h4><p>Finds names gapping before the open and ties each gap to its catalyst.</p><span class="tag">premarket_gap.py</span></div>
+        <div class="card"><h4>Runner Scanner &amp; Grader</h4><p>Finds low-float momentum runners and grades each one: early, pullback-watch, or don't chase.</p><span class="tag">runner_grader.py</span></div>
+        <div class="card"><h4>Breakdown Scanner</h4><p>Catches the drops, not just the rips: names breaking down for short or put setups.</p><span class="tag">breakdown_scan.py</span></div>
+        <div class="card"><h4>World Market Agent</h4><p>Reads Asia, Europe and overnight futures before the US open to set the day's tone.</p><span class="tag">world_market.py</span></div>
+        <div class="card"><h4>News Watch</h4><p>Scrapes macro headlines with a self-hosted crawler and flags market-moving events.</p><span class="tag">news_watch.py</span></div>
+      </div></div>
+
+      <div class="group"><h3>Strategy &amp; signals</h3><div class="grid">
+        <div class="card"><h4>9-Vote Tech Score</h4><p>Nine independent technical checks vote on each name; paired with 2.5:1 ATR-based risk.</p><span class="tag">star_score.py</span></div>
+        <div class="card"><h4>Fair Value Gap Engine</h4><p>ICT-style FVG and inversion-FVG detection, built to be tested, with a 1:1 TradingView port.</p><span class="tag">fvg.py</span></div>
+        <div class="card"><h4>Random Forest Signal</h4><p>Machine-learning consensus with a confidence score, validated walk-forward only.</p><span class="tag">ml_forest.py</span></div>
+        <div class="card"><h4>Volume-Weighted RSI</h4><p>Pullback-in-uptrend signal using RSI, trend and volume confirmation.</p><span class="tag">trading_signals.py</span></div>
+        <div class="card"><h4>Intraday Scalp Desk</h4><p>Oversold-bounce scalps on 5-minute bars, fed by a real-time data layer.</p><span class="tag">scalp_desk.py</span></div>
+        <div class="card"><h4>Gold Desk</h4><p>Strategy tester for gold futures, which trade nearly 24 hours a day.</p><span class="tag">gold.py</span></div>
+      </div></div>
+
+      <div class="group"><h3>Options analytics</h3><div class="grid">
+        <div class="card"><h4>GEX Radar</h4><p>Dealer gamma exposure from real options open interest: gamma flip, call and put walls, regime.</p><span class="tag">gex.py</span></div>
+        <div class="card"><h4>Greeks Engine</h4><p>Black-Scholes delta, gamma, theta, vega and rho for any contract.</p><span class="tag">greeks.py</span></div>
+        <div class="card"><h4>Options Play Builder</h4><p>Turns a strong directional signal into a concrete call or put play with portfolio greeks.</p><span class="tag">options_play.py</span></div>
+      </div></div>
+
+      <div class="group"><h3>Risk, execution &amp; operations</h3><div class="grid">
+        <div class="card"><h4>Risk Manager</h4><p>Hard pre-trade gate: sizing, daily max loss, total open-risk budget, minimum R:R. Rules are numbers, not caveats.</p><span class="tag">risk_manager.py</span></div>
+        <div class="card"><h4>IBKR Broker Connector</h4><p>Order execution with a hardwired safety gate that blocks live accounts from auto-trading.</p><span class="tag">ibkr_broker.py</span></div>
+        <div class="card"><h4>Active Trade Manager</h4><p>Checks every 60 seconds: breakeven at +1R, scale half, trail above +2R.</p><span class="tag">active_watch.py</span></div>
+        <div class="card"><h4>Market Calendar &amp; Earnings Guard</h4><p>Knows NYSE holidays and early closes, and won't hold through earnings.</p><span class="tag">market_calendar.py</span></div>
+        <div class="card"><h4>Watchdog</h4><p>Health monitor for the 24/7 desk that heals failed services and alerts by Telegram.</p><span class="tag">watchdog.py</span></div>
+        <div class="card"><h4>Daily Review Agent</h4><p>After the close, reviews every decision and feeds lessons back into the system.</p><span class="tag">daily_review.py</span></div>
+      </div></div>
+    </section>
+
+    <section id="research">
+      <div class="eyebrow">Research</div>
+      <h2 class="s">Selected studies</h2>
+      <p class="sdesc">Every strategy is proven, or killed, on history before it gets near real money.</p>
+
+      <div class="study">
+        <h4>Repairing a Fair Value Gap strategy</h4>
+        <p class="q">Why did a textbook FVG setup fail, and what does it take to fix it?</p>
+        <ul>
+          <li><b>Timeframe was the biggest lever.</b> On daily bars, overnight gaps blew straight through stops. Moving to 1-hour bars fixed the backwards risk asymmetry.</li>
+          <li><b>Better entries.</b> A limit order at the gap top instead of chasing the close cut risk to the gap size and flipped reward-to-risk positive.</li>
+          <li><b>Quality filters.</b> Volume above 1.2× average and a stacked trend (EMA50 above EMA200) removed most low-conviction setups.</li>
+          <li><b>Out-of-sample check.</b> The same settings, with no re-tuning, were tested across five large-cap names over 11 years of hourly data in TradingView. They held up on three of the five, so the work continues before any capital goes in.</li>
+        </ul>
+      </div>
+
+      <div class="study">
+        <h4>Finding a signal that could never fire</h4>
+        <p class="q">A volume-weighted RSI rule produced zero trades. Why?</p>
+        <ul>
+          <li>The rule required RSI below 30 <b>and</b> price above the 50-day EMA at the same time, which never happened once in five years of NVDA data.</li>
+          <li>Redefined it as a <b>pullback in an uptrend</b> (RSI 35–50, above EMA50, volume confirmation). It now trades, and is being forward-tested for a real sample.</li>
+          <li>Along the way, found and fixed a <b>frozen RSI</b> bug: the indicator was seeded from the oldest bars, so it never reflected recent price.</li>
+        </ul>
+      </div>
+
+      <div class="study">
+        <h4>Machine learning without fooling myself</h4>
+        <p class="q">Can a random forest predict direction, honestly measured?</p>
+        <ul>
+          <li>Built a consensus-plus-confidence forest and validated it <b>walk-forward only</b>: train on the past, test on the next unseen window, repeat.</li>
+          <li>Only one name cleared the edge threshold, so the model is in forward-test, not live trading.</li>
+        </ul>
+      </div>
+
+      <div class="study">
+        <h4>Dealer gamma as a market regime</h4>
+        <p class="q">Does negative dealer gamma below the flip level predict faster downside?</p>
+        <ul>
+          <li>Free options history doesn't exist, so instead of a fake backtest STAR <b>logs real GEX daily</b> for SPY, QQQ and IWM and tests the edge as the sample grows.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="principles">
+      <div class="eyebrow">Principles</div>
+      <h2 class="s">How I build</h2>
+      <div class="principles">
+        <div class="card"><h4>Real data or an honest error</h4><p>No seeded or placeholder numbers, ever. If a feed is down, the dashboard says so.</p></div>
+        <div class="card"><h4>No look-ahead</h4><p>Backtests fill on the next bar, include slippage and costs, and size by risk.</p></div>
+        <div class="card"><h4>Decide the verdict first</h4><p>Pass/fail rules are written before the test runs, so nobody can move the goalposts afterwards.</p></div>
+        <div class="card"><h4>Safety is hardwired</h4><p>Paper-only gates, daily loss limits and secrets in the macOS Keychain, not in files.</p></div>
+      </div>
+    </section>
+
+    <section id="stack">
+      <div class="eyebrow">Tech stack</div>
+      <h2 class="s">Built with</h2>
+      <div class="chips">
+        <span>Python</span><span>pandas</span><span>scikit-learn</span><span>Interactive Brokers API</span><span>TradingView Pine Script</span>
+        <span>SQLite</span><span>yfinance &amp; Alpaca data</span><span>Black-Scholes</span><span>launchd (24/7 services)</span><span>Tailscale</span>
+        <span>Telegram alerts</span><span>Claude agents (MCP)</span><span>Crawl4AI</span>
+      </div>
+    </section>
   </main>
 </div>
-<script>
-const money = v => (v < 0 ? "−$" : v > 0 ? "+$" : "$") + Math.abs(v).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
-const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
-const set = (id, txt, c) => { const e = document.getElementById(id); e.textContent = txt; e.className = "v " + (c || ""); };
-function render(d) {
-  set("all", money(d.all_pnl), cls(d.all_pnl));
-  set("today", money(d.today_pnl), cls(d.today_pnl));
-  set("trades", d.all_trades.toLocaleString());
-  set("wr", d.win_rate.toFixed(1) + "%");
-  document.getElementById("asof").textContent = "As of " + d.as_of + " · paper account · updated every 30 seconds.";
-  const max = Math.max(1, ...d.days.map(x => Math.abs(x.pnl)));
-  // each bar = top half (gains grow up) + bottom half (losses grow down)
-  document.getElementById("bars").innerHTML = d.days.map(x => {
-    const h = Math.abs(x.pnl) / max * 100, up = x.pnl >= 0;
-    return `<div class="bar" title="${x.date}: ${money(x.pnl)} (${x.trades} trades)">` +
-      `<div class="half" style="justify-content:flex-end">${up ? `<i style="height:${h}%;background:#10B981"></i>` : ""}</div>` +
-      `<div class="half">${up ? "" : `<i style="height:${h}%;background:#EF4444"></i>`}</div></div>`;
-  }).join("");
-  document.getElementById("desks").innerHTML = Object.entries(d.desks).map(([k, v]) =>
-    `<tr><td>${k.replace(/[<>&]/g, "")}</td><td class="r">${v.trades}</td><td class="r">${v.trades ? (100 * v.wins / v.trades).toFixed(1) + "%" : "—"}</td><td class="r ${cls(v.pnl)}">${money(v.pnl)}</td></tr>`).join("");
-}
-async function tick() {
-  try {
-    const r = await fetch("/api/public", {cache: "no-store"});
-    if (!r.ok) throw 0;
-    render(await r.json());
-    document.getElementById("status").textContent = "Live"; document.getElementById("dot").className = "dot live";
-  } catch {
-    document.getElementById("status").textContent = "STAR server offline"; document.getElementById("dot").className = "dot";
-  }
-}
-tick(); setInterval(tick, 30000);
-</script>
 </body>
 </html>

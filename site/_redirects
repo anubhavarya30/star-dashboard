@@ -1,3 +1,0 @@
-# live data comes from the STAR Mac via Tailscale Funnel (public_server.py, read-only)
-/api/public  https://anubhavs-macbook-pro.tail27c2a3.ts.net/api/public  200!
-/api/*       /404  404!
