@@ -5,6 +5,16 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-04 evening (gold = night desk, news gate, IBKR bars)
+User plan: GOLD trades evening->morning, STOCKS own the cash session. `gold.night_window()` blocks
+NEW gold entries Mon-Fri 08:30-15:00 CT (open trades still managed). Bars now from IBKR MGC 15m
+(clientId 96, Yahoo GC=F fallback). Signals use completed bars only (bug: live bar's partial volume
+failed the vol filter). New `engine/gold_news.py`: IBKR DJ/Briefing headlines on GLD -> keyword bias,
+GATE only (blocks LONG on bearish / SHORT on bullish, neutral on outage), UNPROVEN — bias logged per trade.
+IBKR paper still Error 10168 "not subscribed" for real-time MGC -> user must enable "share real-time
+market data with paper account" in Client Portal. Webull XAUUSD spot = live (ts == now) but volume 0.
+Gold job still every 20 min (StartInterval 1200); user to switch to 300.
+
 ## 🗓️ Session log — 2026-11-04 (24/7: gold desk -> IBKR paper MGC; stock desk back ON)
 IBKR paper DUQ923304 permissions VERIFIED by place+cancel: MGC futures ✓, EURUSD forex ✓,
 BTC crypto ✓ (crypto needs tif IOC/Minutes). New `ibkr_broker.place_future_order()` (DU gate,

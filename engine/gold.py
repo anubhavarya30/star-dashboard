@@ -40,8 +40,35 @@ def _save(s):
 
 
 def _bars():
+    """15m MGC bars from IBKR (fresher than Yahoo's ~10-min-delayed free feed); Yahoo GC=F fallback."""
+    try:
+        import signal as _sig
+        import pandas as pd
+        from ib_async import IB, ContFuture
+        _sig.alarm(40)
+        ib = IB(); ib.connect("127.0.0.1", 7497, clientId=96, timeout=10)
+        try:
+            cf = ContFuture("MGC", "COMEX"); ib.qualifyContracts(cf)
+            b = ib.reqHistoricalData(cf, "", "2 D", "15 mins", "TRADES", useRTH=False)
+        finally:
+            ib.disconnect(); _sig.alarm(0)
+        if b and len(b) >= 25:
+            return pd.DataFrame({"Open": [x.open for x in b], "High": [x.high for x in b], "Low": [x.low for x in b],
+                                 "Close": [x.close for x in b], "Volume": [x.volume for x in b]},
+                                index=[x.date for x in b])
+    except Exception:
+        pass
     import yfinance as yf
     return yf.Ticker(SYM).history(period="2d", interval="15m")
+
+
+def night_window(now=None):
+    """User plan 2026-11-04: gold = evening->morning; stocks own the cash session.
+    No NEW gold entries Mon-Fri 08:30-15:00 Central (open positions still managed)."""
+    from zoneinfo import ZoneInfo
+    t = (now or datetime.now(ZoneInfo("America/Chicago")))
+    day = t.weekday() < 5 and (8, 30) <= (t.hour, t.minute) < (15, 0)
+    return not day
 
 
 def signal(h):
@@ -120,8 +147,13 @@ def tick():
             return f"GOLD EXIT {p['dir']} @ {exit_px} ({reason}) {r:+.2f}R | total {s['trades']} trades, {s['sum_r']:+.2f}R"
     # enter
     if not s["open"]:
-        sig = signal(h.iloc[:-1])  # completed bars only; the live bar has partial volume
+        sig = signal(h.iloc[:-1]) if night_window() else None  # completed bars only; day = stocks' turn
         if sig:
+            import gold_news
+            nb = gold_news.bias()
+            if (sig["dir"] == "LONG" and nb["bias"] == "bearish") or (sig["dir"] == "SHORT" and nb["bias"] == "bullish"):
+                return f"GOLD {sig['dir']} BLOCKED by news ({nb['bias']} score {nb['score']}, {nb['relevant']} relevant headlines)"
+            sig = {**sig, "news": nb["bias"]}
             via = "sim"
             r_ = _ibkr("BUY" if sig["dir"] == "LONG" else "SELL", sig["entry"])
             if r_ is not None:
@@ -131,7 +163,7 @@ def tick():
             s["open"] = {**sig, "opened_at": now, "via": via, "contracts": CONTRACTS}; _save(s)
             try:
                 import telegram_alert
-                telegram_alert.send(f"🟡 GOLD {sig['dir']} [{via}] {CONTRACTS} MGC @ {sig['entry']} stop {sig['stop']} tgt {sig['target']}")
+                telegram_alert.send(f"🟡 GOLD {sig['dir']} [{via}] {CONTRACTS} MGC @ {sig['entry']} stop {sig['stop']} tgt {sig['target']} | news {sig['news']}")
             except Exception:
                 pass
             return f"GOLD ENTER [{via}] {sig['dir']} @ {sig['entry']} stop {sig['stop']} tgt {sig['target']} ({sig['reason']})"
