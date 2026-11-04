@@ -90,6 +90,43 @@ def place_order(symbol, qty, action="BUY", order_type="MKT", limit_price=None):
         ib.disconnect()
 
 
+def place_future_order(root, exchange, qty, action, ref_price, slip=0.003, tick=0.1):
+    """Front-month FUTURE order (e.g. MGC/COMEX micro gold) on a verified paper (DU)
+    account only. Marketable limit off ref_price (no IBKR futures data sub), GTC +
+    outsideRth so it works in the ~23h futures session."""
+    from ib_async import ContFuture, Future, LimitOrder
+    ib = _connect(client_id=92)
+    try:
+        accts = ib.managedAccounts()
+        acct = accts[0] if accts else ""
+        if not acct.upper().startswith("DU"):
+            return {"ok": False, "blocked": True, "account": acct,
+                    "error": f"SAFETY GATE: refusing to trade non-paper account '{acct}'."}
+        cf = ib.qualifyContracts(ContFuture(root, exchange))
+        if not cf:
+            return {"ok": False, "error": f"cannot resolve front-month {root}"}
+        contract = ib.qualifyContracts(Future(conId=cf[0].conId))[0]
+        px = ref_price * (1 + slip if action.upper() == "BUY" else 1 - slip)
+        px = round(round(px / tick) * tick, 2)
+        order = LimitOrder(action.upper(), abs(int(qty)), px)
+        order.tif = "GTC"
+        order.outsideRth = True
+        trade = ib.placeOrder(contract, order)
+        for _ in range(6):
+            ib.sleep(2)
+            if trade.orderStatus.status in ("Filled", "Cancelled", "ApiCancelled", "Inactive"):
+                break
+        if trade.orderStatus.status not in ("Filled",):
+            ib.cancelOrder(order)  # never leave a stray working futures order
+            ib.sleep(1)
+        return {"ok": trade.orderStatus.status == "Filled", "account": acct,
+                "symbol": contract.localSymbol, "action": action.upper(), "qty": int(qty),
+                "status": trade.orderStatus.status, "filled": trade.orderStatus.filled,
+                "avg_fill": trade.orderStatus.avgFillPrice, "limit": px}
+    finally:
+        ib.disconnect()
+
+
 def place_option_order(symbol, expiry, strike, right, qty, limit_price, action="BUY"):
     """Place an OPTION order on a verified paper (DU) account. Same safety gate.
     expiry 'YYYY-MM-DD', right 'C'/'P', limit_price from the option chain (we have

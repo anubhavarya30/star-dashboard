@@ -21,6 +21,8 @@ HERE = os.path.dirname(__file__)
 STATE = os.path.join(HERE, "..", "data", "gold_state.json")
 RESULTS = os.path.join(HERE, "..", "data", "gold_results.csv")
 SYM = "GC=F"
+IBKR_LIVE = True      # 2026-11-04: route entries/exits to IBKR PAPER as 1 MGC (micro gold) contract
+CONTRACTS = 1
 RES_FIELDS = ["opened_at", "closed_at", "duration_min", "dir", "entry", "exit",
               "stop", "target", "r_mult", "pnl_pct", "reason"]
 
@@ -68,6 +70,19 @@ def signal(h):
     return None
 
 
+def _ibkr(action, ref_price):
+    """Send 1 MGC order to IBKR paper. Returns fill dict, or None if not routed."""
+    if not IBKR_LIVE:
+        return None
+    try:
+        import sys
+        sys.path.insert(0, HERE)
+        import ibkr_broker as b
+        return b.place_future_order("MGC", "COMEX", CONTRACTS, action, ref_price)
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 def tick():
     s = _load()
     h = _bars()
@@ -85,6 +100,11 @@ def tick():
             if price >= p["stop"]: exit_px, reason = p["stop"], "stop"
             elif price <= p["target"]: exit_px, reason = p["target"], "target"
         if exit_px is not None:
+            if p.get("via") == "ibkr":
+                r_ = _ibkr("SELL" if p["dir"] == "LONG" else "BUY", price)
+                if not (r_ and r_.get("ok")):   # exit not filled: keep position, retry next tick
+                    return f"GOLD EXIT FAILED [ibkr] {p['dir']} ({reason}) — {r_} — will retry"
+                exit_px = round(float(r_["avg_fill"]), 1)
             sign = 1 if p["dir"] == "LONG" else -1
             r = round(sign * (exit_px - p["entry"]) / risk, 2) if risk else 0
             pnl_pct = round(sign * (exit_px / p["entry"] - 1) * 100, 2)
@@ -102,8 +122,19 @@ def tick():
     if not s["open"]:
         sig = signal(h)
         if sig:
-            s["open"] = {**sig, "opened_at": now}; _save(s)
-            return f"GOLD ENTER {sig['dir']} @ {sig['entry']} stop {sig['stop']} tgt {sig['target']} ({sig['reason']})"
+            via = "sim"
+            r_ = _ibkr("BUY" if sig["dir"] == "LONG" else "SELL", sig["entry"])
+            if r_ is not None:
+                if not r_.get("ok"):           # IBKR didn't fill -> skip, don't fake a fill
+                    return f"GOLD ENTRY SKIPPED [ibkr] {sig['dir']} — {r_}"
+                via = "ibkr"; sig = {**sig, "entry": round(float(r_["avg_fill"]), 1)}
+            s["open"] = {**sig, "opened_at": now, "via": via, "contracts": CONTRACTS}; _save(s)
+            try:
+                import telegram_alert
+                telegram_alert.send(f"🟡 GOLD {sig['dir']} [{via}] {CONTRACTS} MGC @ {sig['entry']} stop {sig['stop']} tgt {sig['target']}")
+            except Exception:
+                pass
+            return f"GOLD ENTER [{via}] {sig['dir']} @ {sig['entry']} stop {sig['stop']} tgt {sig['target']} ({sig['reason']})"
     exp = round(s["sum_r"] / s["trades"], 2) if s["trades"] else 0
     return f"gold tick: price {price} | open {bool(s['open'])} | {s['trades']} trades, {s['wins']}W, {s['sum_r']:+.2f}R, exp {exp}R/trade"
 

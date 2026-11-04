@@ -5,6 +5,17 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-04 (24/7: gold desk -> IBKR paper MGC; stock desk back ON)
+IBKR paper DUQ923304 permissions VERIFIED by place+cancel: MGC futures ✓, EURUSD forex ✓,
+BTC crypto ✓ (crypto needs tif IOC/Minutes). New `ibkr_broker.place_future_order()` (DU gate,
+marketable limit, GTC+outsideRth, cancels unfilled). `engine/gold.py` IBKR_LIVE=True: each
+signal = 1 MGC on IBKR paper (skips if no fill, exit retried until filled); Telegram on entry.
+Round-trip test filled (4068.2/4068.1). Stale Oct-22 sim SHORT manually closed -0.58R (labelled).
+Gold scorecard now 50 tr, 22W, +16.42R, +0.33R/trade. Stock desk STOCK_ENTRIES_ENABLED=True again
+(user: trade wherever possible) -> AAPL 5sh @351.66 via ibkr. NOTE: IBKR holds untracked old
+positions (AXP 2, MU 5, ARM 1, GOOGL 1, JPM 3, +2 extra AAPL) not in risk_state — reconcile.
+Crypto/forex: permitted but NO strategy yet — TV-test first (PF>1.3 rule).
+
 ## 🗓️ Session log — 2026-11-04 (day-trader-skill ORB tested in TradingView — FAILED)
 `engine/orb_strategy.pine` = 1:1 port of the day-trader skill defaults (15-min opening range,
 first 5m close above OR high 9:50-15:30, stop OR-mid, 2R target, flat 15:55, long only).
