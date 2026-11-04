@@ -97,5 +97,12 @@ def tick():
     return f"BTC ENTER LONG {s['open']['qty']} @ {entry:.2f} stop {sig['stop']} tgt {sig['target']} ({sig['reason']})"
 
 
+def stats():
+    s = _load()
+    return {"open": s.get("open"), "trades": s.get("trades", 0), "wins": s.get("wins", 0),
+            "total_r": s.get("sum_r", 0.0), "pnl": s.get("pnl", 0.0),
+            "win_rate": round(s["wins"] / s["trades"] * 100, 1) if s.get("trades") else 0}
+
+
 if __name__ == "__main__":
     print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), tick())

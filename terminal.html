@@ -1124,8 +1124,19 @@ async function loadPaper(){
   // DB-backed analysis by strategy (stock vs gold), persisted in SQLite
   const stats=at.stats||{};
   const srcRows=Object.keys(stats).length?Object.entries(stats).map(([src,g])=>`<tr class="strat-row" onclick="toggleStrat('${src}')" style="cursor:pointer" title="click to see ${src} trades + open positions"><td style="text-align:left;text-transform:uppercase"><span class="strat-caret" id="caret-${src}">▸</span> ${src}</td><td>${g.trades}</td><td>${g.win_rate}%</td><td class="${cls(g.pnl)}">${g.pnl>=0?'+':''}$${fmtN(g.pnl)}</td><td class="${cls(g.r)}">${g.r>=0?'+':''}${g.r}R</td><td>${g.expectancy_r}R</td></tr><tr class="strat-detail" id="strat-${src}" style="display:none"><td colspan="6" style="padding:0;background:rgba(255,255,255,.015)"><div id="strat-box-${src}" style="padding:10px 14px">click to load…</div></td></tr>`).join(""):'<tr><td colspan="6" class="empty">No closed trades in the DB yet</td></tr>';
+  // 24/7 desks (gold MGC + BTC via IBKR paper) and LIVE IBKR positions
+  let gd,bd,pf;try{gd=await api(`/api/gold`);}catch(e){gd=null;}try{bd=await api(`/api/btc`);}catch(e){bd=null;}try{pf=await api(`/api/portfolio`);}catch(e){pf=null;}
+  const deskRow=(name,d,unit)=>{if(!d)return `<tr><td style="text-align:left">${name}</td><td colspan="5" class="errline">unavailable</td></tr>`;const o=d.open;const pos=o?`${o.dir||'LONG'} ${o.qty||o.contracts||1}${o.qty?' BTC':' MGC'} @ ${fmtN(o.entry)} · stop ${fmtN(o.stop)} · tgt ${fmtN(o.target)} <span style="color:var(--muted)">[${o.via||'ibkr'}]</span>`:'<span style="color:var(--muted)">flat — waiting for signal</span>';const r=parseFloat(d.total_r||0);return `<tr><td style="text-align:left">${name}</td><td style="text-align:left">${pos}</td><td>${d.trades}</td><td>${d.win_rate}%</td><td class="${cls(r)}">${r>=0?'+':''}${r}R</td><td class="${cls(d.pnl||0)}">${d.pnl!=null?(d.pnl>=0?'+':'')+'$'+fmtN(d.pnl):'—'}</td></tr>`;};
+  const deskRows=deskRow("GOLD (MGC)",gd)+deskRow("BTC",bd);
+  const pfPos=(pf&&pf.positions)||[];
+  const pfRows=pf&&pf.status==="error"?`<tr><td colspan="5" class="errline">IBKR not connected: ${pf.error||''}</td></tr>`:(pfPos.length?pfPos.map(p=>{const u=parseFloat(p.unrealized_pnl);return `<tr><td class="sym" style="text-align:left">${p.symbol}</td><td>${p.quantity}</td><td>${fmtN(p.avg_cost)}</td><td>${p.market_price!=null?fmtN(p.market_price):'—'}</td><td class="${cls(u)}">${isNaN(u)?'—':(u>=0?'+':'')+'$'+fmtN(u)}</td></tr>`;}).join(""):'<tr><td colspan="5" class="empty">No IBKR positions</td></tr>');
+  const pfTime=pf&&pf.last_update?new Date(pf.last_update).toLocaleTimeString("en-US",{hour12:false}):'—';
   $("paperResult").innerHTML=`
     <div class="btmetrics">${cards}</div>
+    <div class="bth">24/7 desks — Gold &amp; BTC <span style="color:var(--faint);font-size:10px;font-family:var(--sans)">· IBKR paper</span></div>
+    <table class="bttbl"><thead><tr><th style="text-align:left">Desk</th><th style="text-align:left">Position</th><th>Trades</th><th>Win%</th><th>Total R</th><th>P&amp;L</th></tr></thead><tbody>${deskRows}</tbody></table>
+    <div class="bth">IBKR positions (live from TWS) <span style="color:var(--faint);font-size:10px;font-family:var(--sans)">· as of ${pfTime}</span></div>
+    <table class="bttbl"><thead><tr><th style="text-align:left">Sym</th><th>Qty</th><th>Avg cost</th><th>Price</th><th>Unrealized</th></tr></thead><tbody>${pfRows}</tbody></table>
     <div class="bth">Analysis by strategy (SQLite — all closed trades)</div>
     <table class="bttbl"><thead><tr><th style="text-align:left">Source</th><th>Trades</th><th>Win%</th><th>P&amp;L</th><th>Total R</th><th>Expectancy</th></tr></thead><tbody>${srcRows}</tbody></table>
     <div class="bth">Open positions <span style="color:var(--faint);font-size:10px;font-family:var(--sans)">· live, auto-refresh 20s</span></div>

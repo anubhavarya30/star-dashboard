@@ -305,6 +305,14 @@ def market_overview():
 
 def portfolio():
     f = HERE / "live_account.json"
+    # refresh from IBKR when the snapshot is stale (no separate sync daemon needed)
+    try:
+        if (not f.exists()) or (time.time() - f.stat().st_mtime > 90):
+            import subprocess, sys as _sys
+            subprocess.run([_sys.executable, str(HERE / "ibkr_live_sync.py")], cwd=str(HERE),
+                           timeout=45, capture_output=True)
+    except Exception:
+        pass
     if f.exists():
         try:
             return json.loads(f.read_text())
@@ -435,7 +443,7 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/market":
                 return self._send_json(market_overview())
             if u.path == "/api/portfolio":
-                return self._send_json(portfolio())
+                return self._send_json(cached("portfolio", portfolio, ttl=60))
             if u.path == "/api/agents":
                 return self._send_json(agents())
             if u.path == "/api/pnl_calendar":
@@ -581,6 +589,11 @@ class Handler(BaseHTTPRequestHandler):
                         return {"error": "no CEO brief yet — runs pre-market (com.star.ceo) or via star_ceo.research()"}
                     return _j.load(open(files[-1]))
                 return self._send_json(cached("ceo", _ceo, ttl=60))
+            if u.path == "/api/btc":
+                def _b():
+                    import btc
+                    return btc.stats()
+                return self._send_json(cached("btc", _b, ttl=30))
             if u.path == "/api/gold":
                 def _g():
                     import gold
