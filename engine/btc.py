@@ -82,7 +82,7 @@ def tick():
             pass
         _alert(f"🔶 BTC EXIT ({reason}) @ {exit_px:.2f} {r:+.2f}R ${pnl:+.2f}")
         return f"BTC EXIT ({reason}) @ {exit_px:.2f} {r:+.2f}R ${pnl:+.2f} | total {s['trades']} tr ${s['pnl']:+.2f}"
-    sig = gold.signal(h)
+    sig = gold.signal(h.iloc[:-1])  # completed bars only; the live bar has partial volume
     if not sig or sig["dir"] != "LONG":
         return f"btc tick: {price:.0f} | flat, no long signal | {s['trades']} tr, {s['wins']}W, ${s['pnl']:+.2f}"
     qty = round(NOTIONAL / price, 4)

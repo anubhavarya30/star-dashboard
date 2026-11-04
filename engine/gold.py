@@ -120,7 +120,7 @@ def tick():
             return f"GOLD EXIT {p['dir']} @ {exit_px} ({reason}) {r:+.2f}R | total {s['trades']} trades, {s['sum_r']:+.2f}R"
     # enter
     if not s["open"]:
-        sig = signal(h)
+        sig = signal(h.iloc[:-1])  # completed bars only; the live bar has partial volume
         if sig:
             via = "sim"
             r_ = _ibkr("BUY" if sig["dir"] == "LONG" else "SELL", sig["entry"])
