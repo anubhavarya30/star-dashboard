@@ -17,7 +17,7 @@ HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, ".."))
 LOG = "/tmp/star_paper.log"
-STOCK_ENTRIES_ENABLED = False  # FVG+GEX-ONLY FOCUS 2026-07-07 (user directive): stock desk
+STOCK_ENTRIES_ENABLED = True   # RE-ENABLED 2026-11-04 (user: "take trades wherever you can"); was off since 07-07 FVG+GEX focus. stock desk
                               # entries OFF, manage_open() still runs so positions exit clean.
 
 
