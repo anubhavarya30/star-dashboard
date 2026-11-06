@@ -151,6 +151,41 @@ CHECKS = {
 }
 
 
+HEAL_AFTER_MIN = 6       # IBKR down this long -> restart TWS via IBC (auto-login)
+HEAL_COOLDOWN_MIN = 20   # one login attempt per 20 min max (never back-to-back logins)
+IBC_START = os.path.expanduser("~/ibc/twsstartmacos.sh")
+
+
+def _port_listening(port=7497):
+    import socket
+    with socket.socket() as s:
+        s.settimeout(2)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _heal_tws(state, now, stamp):
+    """Self-heal the broker: if the API port has been dead HEAL_AFTER_MIN, kill whatever TWS is
+    stuck (login screen / hung) and start the ONE TWS session via IBC (Keychain password).
+    Single session only — never runs while a TWS is serving the API."""
+    ib = state.get("ibkr", {})
+    if ib.get("ok", True) or _port_listening():
+        return
+    if now - ib.get("fail_since", now) < HEAL_AFTER_MIN * 60:
+        return
+    if state.get("tws_heal_at") and now - state["tws_heal_at"] < HEAL_COOLDOWN_MIN * 60:
+        return
+    if not os.path.exists(IBC_START):
+        return
+    state["tws_heal_at"] = now
+    subprocess.run(["pkill", "-f", "Trader Workstation"], capture_output=True)
+    subprocess.run(["pkill", "-f", "IBC.jar"], capture_output=True)
+    time.sleep(5)
+    subprocess.Popen(["/bin/bash", IBC_START, "-inline"], cwd=os.path.dirname(IBC_START),
+                     stdout=open("/tmp/ibc_tws_run.log", "a"), stderr=subprocess.STDOUT,
+                     start_new_session=True)   # own session so launchd doesn't reap it when watchdog exits
+    telegram_alert.send(f"🔧 [{stamp}] IBKR down {int((now - ib['fail_since']) / 60)} min — restarting TWS with auto-login (IBC). Will confirm when back.")
+
+
 def main():
     state = _load_state()
     now = _now()
@@ -174,8 +209,13 @@ def main():
             if not was_ok:
                 telegram_alert.send(f"✅ [{stamp}] {name.upper()} recovered — back to normal")
                 last_alert = 0
-        state[name] = {"ok": ok, "last_alert": last_alert, "detail": detail}
+        fail_since = prev.get("fail_since", now) if (not ok and not was_ok) else now
+        state[name] = {"ok": ok, "last_alert": last_alert, "detail": detail, "fail_since": fail_since}
 
+    try:
+        _heal_tws(state, now, stamp)
+    except Exception as e:
+        print(f"heal_tws error: {e}")
     _save_state(state)
     # one-line stdout for the launchd log
     summary = " ".join(f"{k}={'ok' if v['ok'] else 'FAIL'}" for k, v in state.items())
