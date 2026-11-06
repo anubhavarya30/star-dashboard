@@ -5,6 +5,14 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-06 (AUTO-LOGIN ROOT CAUSE: IBC too old)
+IBC 3.20.0 hung TWS 10.51/Gateway 10.50 ("Initializing managers", frozen Configure). IBC 3.24.2 release
+notes: "support the latest versions of TWS and Gateway (10.48 onwards)". Installed 3.24.2 to ~/ibc (old in
+~/ibc-3.20-old; config.ini carried; start scripts: TWS 10.51 / GW 10.50, Keychain star-ibkr-paper).
+"Stable" Gateway download = 10.50 (same as installed) — no gain. ONE SESSION ONLY (user rule): IBC runs THE
+TWS (standalone 10.51) — not a 2nd login. Phone checks via STAR dashboard, not IBKR app (would kick it).
+Switch scheduled 15:05 CT Nov 6 (one attempt).
+
 ## 🗓️ Session log — 2026-11-06 (3-WEEK CHALLENGE starts: daily results, aim 70% green days)
 User deadline: 3 weeks from 2026-11-06 to prove STAR makes money before real money. Wants a daily result,
 >70% green days, gold+BTC at night, 24/7. Built `engine/daily_report.py` (Telegram scorecard once/day
