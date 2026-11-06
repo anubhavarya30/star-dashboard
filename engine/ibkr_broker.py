@@ -127,6 +127,42 @@ def place_future_order(root, exchange, qty, action, ref_price, slip=0.003, tick=
         ib.disconnect()
 
 
+def place_future_stop(root, exchange, qty, action, stop_px, tick=0.1):
+    """Protective GTC STOP held AT IBKR (fires even if STAR/the API is down). Paper (DU) only.
+    Same clientId as place_future_order so cancel_future_stop() can cancel it."""
+    from ib_async import ContFuture, Future, StopOrder
+    ib = _connect(client_id=92)
+    try:
+        acct = (ib.managedAccounts() or [""])[0]
+        if not acct.upper().startswith("DU"):
+            return {"ok": False, "blocked": True, "error": f"SAFETY GATE: non-paper account '{acct}'."}
+        cf = ib.qualifyContracts(ContFuture(root, exchange))
+        contract = ib.qualifyContracts(Future(conId=cf[0].conId))[0]
+        order = StopOrder(action.upper(), abs(int(qty)), round(round(stop_px / tick) * tick, 2))
+        order.tif = "GTC"
+        order.outsideRth = True
+        trade = ib.placeOrder(contract, order)
+        ib.sleep(3)
+        st = trade.orderStatus.status
+        return {"ok": st in ("PreSubmitted", "Submitted"), "status": st,
+                "order_id": order.orderId, "perm_id": trade.order.permId, "stop": order.auxPrice}
+    finally:
+        ib.disconnect()
+
+
+def cancel_future_stop(order_id):
+    """Cancel a stop placed by place_future_stop (clientId 92). True if gone/cancelled."""
+    ib = _connect(client_id=92)
+    try:
+        for t in ib.openTrades():
+            if t.order.orderId == order_id:
+                ib.cancelOrder(t.order); ib.sleep(2)
+                return t.orderStatus.status in ("Cancelled", "ApiCancelled", "PendingCancel")
+        return True     # not open any more (filled or already cancelled)
+    finally:
+        ib.disconnect()
+
+
 def place_crypto_order(symbol, qty, action, ref_price, slip=0.003):
     """Crypto (PAXOS) order on a verified paper (DU) account only. IBKR requires
     tif IOC/Minutes for crypto; marketable limit off ref_price. Long-only venue."""

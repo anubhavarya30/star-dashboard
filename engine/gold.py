@@ -97,6 +97,33 @@ def signal(h):
     return None
 
 
+def _broker_stop(p, s):
+    """Keep a protective stop resting AT IBKR for an open ibkr trade. Returns 'filled' when the
+    broker shows us flat (stop fired), else None. Places the stop if missing (self-heal)."""
+    try:
+        import sys
+        sys.path.insert(0, HERE)
+        import ibkr_broker as b
+        pos = b.positions(client_id=91)
+        if not pos:            # shortcut: {} == couldn't connect (account always holds stocks); skip
+            return None
+        if pos.get("MGC", 0) == 0:
+            return "filled"
+        if not p.get("broker_stop_id"):
+            r = b.place_future_stop("MGC", "COMEX", p.get("contracts", CONTRACTS),
+                                    "SELL" if p["dir"] == "LONG" else "BUY", p["stop"])
+            if r.get("ok"):
+                p["broker_stop_id"] = r["order_id"]; _save(s)
+                try:
+                    import telegram_alert
+                    telegram_alert.send(f"🛡 GOLD broker stop placed at IBKR @ {r['stop']} ({p['dir']})")
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return None
+
+
 def _ibkr(action, ref_price):
     """Send 1 MGC order to IBKR paper. Returns fill dict, or None if not routed."""
     if not IBKR_LIVE:
@@ -120,14 +147,22 @@ def tick():
     # manage open
     if s["open"]:
         p = s["open"]; risk = abs(p["entry"] - p["stop"]); exit_px = reason = None
-        if p["dir"] == "LONG":
+        if p.get("via") == "ibkr":
+            bs = _broker_stop(p, s)
+            if bs == "filled":   # IBKR's own stop closed it (e.g. while STAR/API was down)
+                exit_px, reason = p["stop"], "stop (broker)"   # shortcut: logs stop px, not the exact fill
+        if exit_px is None and p["dir"] == "LONG":
             if price <= p["stop"]: exit_px, reason = p["stop"], "stop"
             elif price >= p["target"]: exit_px, reason = p["target"], "target"
-        else:
+        elif exit_px is None:
             if price >= p["stop"]: exit_px, reason = p["stop"], "stop"
             elif price <= p["target"]: exit_px, reason = p["target"], "target"
         if exit_px is not None:
-            if p.get("via") == "ibkr":
+            if p.get("via") == "ibkr" and reason != "stop (broker)":
+                if p.get("broker_stop_id"):
+                    import ibkr_broker as b
+                    b.cancel_future_stop(p.pop("broker_stop_id"))   # else the stop would flip us after we exit
+                    _save(s)                                        # (re-placed next tick if the exit fails)
                 r_ = _ibkr("SELL" if p["dir"] == "LONG" else "BUY", price)
                 if not (r_ and r_.get("ok")):   # exit not filled: keep position, retry next tick
                     return f"GOLD EXIT FAILED [ibkr] {p['dir']} ({reason}) — {r_} — will retry"

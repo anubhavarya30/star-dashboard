@@ -5,6 +5,14 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-06 (broker-held stops for gold)
+TWS nightly auto-restart 23:45 Nov 5 dropped to the PAPER LOGIN screen -> API 7497 down ~11h, no trades,
+open gold SHORT (4074.8, stop 4119.5) unprotected. Fix: `ibkr_broker.place_future_stop/cancel_future_stop`
+(GTC STP outsideRth, clientId 92, DU gate). `gold._broker_stop()` each tick: places the IBKR-held stop if
+missing (self-heals existing trades), detects broker-flat MGC -> logs exit "stop (broker)"; desk-side exits
+cancel the broker stop first. NOT yet live-tested (TWS was logged out). Stock desk still has NO broker stops.
+Root gap remains: TWS login after restart needs the user (IBC not working with self-updating TWS).
+
 ## 🗓️ Session log — 2026-11-04 evening (gold = night desk, news gate, IBKR bars)
 User plan: GOLD trades evening->morning, STOCKS own the cash session. `gold.night_window()` blocks
 NEW gold entries Mon-Fri 08:30-15:00 CT (open trades still managed). Bars now from IBKR MGC 15m
