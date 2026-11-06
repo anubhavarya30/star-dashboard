@@ -127,11 +127,11 @@ def _decision(approved, symbol, reasons, warnings, plan, daily=None):
             "checked_at": datetime.now().astimezone().isoformat()}
 
 
-def record_entry(symbol, entry, stop, shares, target=None):
+def record_entry(symbol, entry, stop, shares, target=None, via="sim"):
     s = _load()
     s["open"].append({"symbol": symbol.upper(), "entry": entry, "stop": stop, "shares": shares,
                       "target": target, "risk_dollars": round((entry - stop) * shares, 2),
-                      "opened_at": datetime.now().isoformat()})
+                      "opened_at": datetime.now().isoformat(), "via": via})
     _save(s); return s
 
 

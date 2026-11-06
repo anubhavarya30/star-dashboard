@@ -5,6 +5,12 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-06 15:05 (AUTO-LOGIN WORKS + V short bug)
+IBC 3.24.2 + standalone TWS 10.51: scheduled switch logged into paper by itself, API 7497 up in 10s, positions
+served. Bug found: V entered [sim] at 08:31 (TWS down) but EOD exit SOLD 4 real V on IBKR -> -4 short. Fix:
+risk_manager.record_entry(via=...), paper_session scale/exit only hit IBKR when p["via"]=="ibkr". Covered
+V -4 @423.10 (real cost ~-$1.7). V's +$20.60 on the scorecard is a SIM trade, not an IBKR fill.
+
 ## 🗓️ Session log — 2026-11-06 (AUTO-LOGIN ROOT CAUSE: IBC too old)
 IBC 3.20.0 hung TWS 10.51/Gateway 10.50 ("Initializing managers", frozen Configure). IBC 3.24.2 release
 notes: "support the latest versions of TWS and Gateway (10.48 onwards)". Installed 3.24.2 to ~/ibc (old in

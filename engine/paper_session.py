@@ -110,7 +110,7 @@ def manage_open(force_close=False):
                 exit_px, via = px, "sim"
                 if bs0 is None:
                     bs0 = _broker()
-                if bs0.get("can_auto_trade"):
+                if bs0.get("can_auto_trade") and p.get("via") == "ibkr":   # never sell shares a sim entry never bought
                     r = _place(p["symbol"], half, "SELL")
                     if r.get("filled") and r.get("avg_fill"):
                         exit_px, via = round(float(r["avg_fill"]), 2), "ibkr"
@@ -163,7 +163,7 @@ def manage_open(force_close=False):
             via = "sim"
             if bs is None:
                 bs = _broker()                                 # connect only now, on a real exit
-            if bs.get("can_auto_trade"):                       # close via real IBKR paper
+            if bs.get("can_auto_trade") and p.get("via") == "ibkr":   # sim entry -> sim exit (Nov 6: sim V entry + real sell = -4 short)
                 r = _place(p["symbol"], p["shares"], "SELL")
                 if r.get("filled") and r.get("avg_fill"):
                     exit_px, via = round(float(r["avg_fill"]), 2), "ibkr"
@@ -239,7 +239,7 @@ def maybe_enter():
         else:                                                  # IBKR mode on but no fill -> don't fake a sim entry
             _log(f"IBKR buy not filled {sym} ({r.get('status') or r.get('error')}) — no entry this tick")
             return
-    rm.record_entry(sym, entry_px, plan["stop"], plan["shares"], plan["target"])
+    rm.record_entry(sym, entry_px, plan["stop"], plan["shares"], plan["target"], via=via)
     _alert("\n".join([
         f"🟢 ENTRY — {sym} [{via}]",
         f"  {plan['shares']} sh @ ${entry_px}",
