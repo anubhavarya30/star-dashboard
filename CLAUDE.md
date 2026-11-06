@@ -5,6 +5,15 @@
 
 ---
 
+## 🗓️ Session log — 2026-11-06 (3-WEEK CHALLENGE starts: daily results, aim 70% green days)
+User deadline: 3 weeks from 2026-11-06 to prove STAR makes money before real money. Wants a daily result,
+>70% green days, gold+BTC at night, 24/7. Built `engine/daily_report.py` (Telegram scorecard once/day
+after 15:10 CT via scripts/gold.sh; day-by-day record data/scorecard.json; STAR's closed trades only,
+old untracked IBKR positions excluded). Gold trades now record $ P&L (MGC $10/pt) -> show in star_pnl.
+IBC+offline TWS 10.51 hung again at "Initializing managers" (login accepted); IBC can't drive the
+self-updating TWS (.dat jars). User logs in manually for now. Next: Gateway+IBC overnight, broker stops
+for stock desk, BTC short side (MBT micro BTC futures) — IBKR crypto is long-only.
+
 ## 🗓️ Session log — 2026-11-06 (broker-held stops for gold)
 TWS nightly auto-restart 23:45 Nov 5 dropped to the PAPER LOGIN screen -> API 7497 down ~11h, no trades,
 open gold SHORT (4074.8, stop 4119.5) unprotected. Fix: `ibkr_broker.place_future_stop/cancel_future_stop`

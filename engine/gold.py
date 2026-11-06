@@ -174,7 +174,8 @@ def tick():
                 dur = round((datetime.fromisoformat(now) - datetime.fromisoformat(p["opened_at"])).total_seconds() / 60, 1)
             except Exception:
                 dur = None
-            _append({"opened_at": p["opened_at"], "closed_at": now, "duration_min": dur,
+            usd = round(sign * (exit_px - p["entry"]) * 10 * p.get("contracts", CONTRACTS), 2) if p.get("via") == "ibkr" else 0.0  # MGC = $10/pt
+            _append({"opened_at": p["opened_at"], "closed_at": now, "duration_min": dur, "pnl": usd,
                      "dir": p["dir"], "entry": p["entry"], "exit": exit_px, "stop": p["stop"],
                      "target": p["target"], "r_mult": r, "pnl_pct": pnl_pct, "reason": reason})
             s["trades"] += 1; s["wins"] += 1 if r > 0 else 0; s["sum_r"] = round(s["sum_r"] + r, 2)
