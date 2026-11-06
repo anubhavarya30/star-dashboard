@@ -97,6 +97,28 @@ def signal(h):
     return None
 
 
+def _breakeven(p, s, price, risk):
+    """At +1R move the stop to entry (desk + IBKR-held stop) so a winner can't become a loser."""
+    if p.get("init_stop") or not risk:
+        return
+    up = (price - p["entry"]) if p["dir"] == "LONG" else (p["entry"] - price)
+    if up < risk:
+        return
+    p["init_stop"] = p["stop"]; p["stop"] = p["entry"]
+    if p.get("via") == "ibkr" and p.get("broker_stop_id"):
+        try:
+            import ibkr_broker as b
+            b.cancel_future_stop(p.pop("broker_stop_id"))   # _broker_stop() re-places it at entry
+        except Exception:
+            pass
+    _save(s)
+    try:
+        import telegram_alert
+        telegram_alert.send(f"🟢 GOLD {p['dir']} +1R — stop moved to breakeven {p['entry']} (can't lose now)")
+    except Exception:
+        pass
+
+
 def _broker_stop(p, s):
     """Keep a protective stop resting AT IBKR for an open ibkr trade. Returns 'filled' when the
     broker shows us flat (stop fired), else None. Places the stop if missing (self-heal)."""
@@ -146,7 +168,8 @@ def tick():
     now = datetime.now().astimezone().isoformat()
     # manage open
     if s["open"]:
-        p = s["open"]; risk = abs(p["entry"] - p["stop"]); exit_px = reason = None
+        p = s["open"]; risk = abs(p["entry"] - p.get("init_stop", p["stop"])); exit_px = reason = None
+        _breakeven(p, s, price, risk)
         if p.get("via") == "ibkr":
             bs = _broker_stop(p, s)
             if bs == "filled":   # IBKR's own stop closed it (e.g. while STAR/API was down)
